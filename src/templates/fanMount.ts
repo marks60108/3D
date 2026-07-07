@@ -16,6 +16,14 @@ export const fanMountTemplate: Template = {
     { kind: "number", key: "legInset", label: "支腳距框邊緣內縮", min: 1, max: 20, step: 0.5, default: 4, unit: "mm" },
     { kind: "number", key: "footSize", label: "腳墊尺寸", min: 8, max: 40, step: 1, default: 16, unit: "mm" },
     { kind: "number", key: "footThickness", label: "腳墊厚度", min: 1, max: 8, step: 0.5, default: 3, unit: "mm" },
+    { kind: "number", key: "leg1OffsetX", label: "支腳1 X 微調(X-,Y-角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
+    { kind: "number", key: "leg1OffsetY", label: "支腳1 Y 微調(X-,Y-角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
+    { kind: "number", key: "leg2OffsetX", label: "支腳2 X 微調(X+,Y-角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
+    { kind: "number", key: "leg2OffsetY", label: "支腳2 Y 微調(X+,Y-角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
+    { kind: "number", key: "leg3OffsetX", label: "支腳3 X 微調(X-,Y+角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
+    { kind: "number", key: "leg3OffsetY", label: "支腳3 Y 微調(X-,Y+角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
+    { kind: "number", key: "leg4OffsetX", label: "支腳4 X 微調(X+,Y+角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
+    { kind: "number", key: "leg4OffsetY", label: "支腳4 Y 微調(X+,Y+角)", min: -40, max: 40, step: 0.5, default: 0, unit: "mm" },
   ],
   build: (values, M) => {
     const fanSize = num(values, "fanSize");
@@ -58,17 +66,19 @@ export const fanMountTemplate: Template = {
     }
 
     const legOffset = legSize / 2 + legInset;
-    const cornerSigns = [
-      [1, 1],
-      [-1, 1],
-      [1, -1],
-      [-1, -1],
+    const corners = [
+      { sx: 1, sy: 1, offsetXKey: "leg1OffsetX", offsetYKey: "leg1OffsetY" },
+      { sx: -1, sy: 1, offsetXKey: "leg2OffsetX", offsetYKey: "leg2OffsetY" },
+      { sx: 1, sy: -1, offsetXKey: "leg3OffsetX", offsetYKey: "leg3OffsetY" },
+      { sx: -1, sy: -1, offsetXKey: "leg4OffsetX", offsetYKey: "leg4OffsetY" },
     ];
 
     let mount = frame;
-    for (const [sx, sy] of cornerSigns) {
-      const cx = sx > 0 ? legOffset : fanSize - legOffset;
-      const cy = sy > 0 ? legOffset : fanSize - legOffset;
+    for (const { sx, sy, offsetXKey, offsetYKey } of corners) {
+      const baseX = sx > 0 ? legOffset : fanSize - legOffset;
+      const baseY = sy > 0 ? legOffset : fanSize - legOffset;
+      const cx = baseX + num(values, offsetXKey);
+      const cy = baseY + num(values, offsetYKey);
 
       const leg = M.Manifold.cube([legSize, legSize, legHeight + legOverlap], false).translate([
         cx - legSize / 2,
