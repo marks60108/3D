@@ -45,6 +45,7 @@ run("tube", { ...defaultValues(templates[2].params), innerDiameter: 0 });
 run("hook", { ...defaultValues(templates[3].params), twoHoles: false, tipAngle: 0 });
 run("hook", { ...defaultValues(templates[3].params), tipAngle: 120 });
 run("fan-mount", { ...defaultValues(templates[4].params), leg1OffsetX: 20, leg1OffsetY: -15 });
+run("charm-peg-panel", { ...defaultValues(templates[8].params), enableConnectors: false });
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);

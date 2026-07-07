@@ -8,7 +8,6 @@ import { fanMountReinforcedTemplate } from "./fanMountReinforced";
 import { dimmInstallerTemplate } from "./dimmInstaller";
 import { deviceRiserTemplate } from "./deviceRiser";
 import { charmPegPanelTemplate } from "./charmPegPanel";
-import { charmSlotStandTemplate } from "./charmSlotStand";
 
 export const templates: Template[] = [
   containerTemplate,
@@ -20,7 +19,6 @@ export const templates: Template[] = [
   dimmInstallerTemplate,
   deviceRiserTemplate,
   charmPegPanelTemplate,
-  charmSlotStandTemplate,
 ];
 
 export * from "./types";
