@@ -69,7 +69,7 @@ export const fanMountFrameTemplate: Template = {
     { kind: "number", key: "holeSpacing", label: "鎖孔中心間距(對邊)", min: 20, max: 240, step: 0.5, default: 105, unit: "mm" },
     { kind: "number", key: "holeDiameter", label: "鎖孔直徑", min: 2, max: 8, step: 0.1, default: 4.3, unit: "mm" },
     { kind: "number", key: "rimWidth", label: "風扇環邊寬度", min: 5, max: 30, step: 0.5, default: 14, unit: "mm" },
-    { kind: "number", key: "mountWidth", label: "骨架整體寬度 (X)", min: 40, max: 250, step: 1, default: 150, unit: "mm" },
+    { kind: "number", key: "mountWidth", label: "骨架整體寬度 (X)", min: 40, max: 250, step: 1, default: 130, unit: "mm" },
     { kind: "number", key: "mountDepth", label: "骨架整體深度 (Y)", min: 40, max: 250, step: 1, default: 65, unit: "mm" },
     { kind: "number", key: "strutWidth", label: "放射連接臂寬度", min: 4, max: 25, step: 0.5, default: 10, unit: "mm" },
     { kind: "number", key: "perimeterWidth", label: "外框寬度", min: 6, max: 30, step: 0.5, default: 12, unit: "mm" },
