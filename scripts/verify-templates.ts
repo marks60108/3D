@@ -37,15 +37,19 @@ for (const t of templates) {
   run(t.id, defaultValues(t.params));
 }
 
+function paramsFor(id: string) {
+  return defaultValues(templates.find((t) => t.id === id)!.params);
+}
+
 console.log("--- variant checks ---");
-run("container", { ...defaultValues(templates[0].params), hasLid: true });
-run("bracket", { ...defaultValues(templates[1].params), twoHolesPerArm: true });
-run("tube", { ...defaultValues(templates[2].params), throughHole: false, innerDiameter: 15 });
-run("tube", { ...defaultValues(templates[2].params), innerDiameter: 0 });
-run("hook", { ...defaultValues(templates[3].params), twoHoles: false, tipAngle: 0 });
-run("hook", { ...defaultValues(templates[3].params), tipAngle: 120 });
-run("fan-mount", { ...defaultValues(templates[4].params), leg1OffsetX: 20, leg1OffsetY: -15 });
-run("charm-peg-panel", { ...defaultValues(templates[8].params), enableConnectors: false });
+run("container", { ...paramsFor("container"), hasLid: true });
+run("bracket", { ...paramsFor("bracket"), twoHolesPerArm: true });
+run("tube", { ...paramsFor("tube"), throughHole: false, innerDiameter: 15 });
+run("tube", { ...paramsFor("tube"), innerDiameter: 0 });
+run("hook", { ...paramsFor("hook"), twoHoles: false, tipAngle: 0 });
+run("hook", { ...paramsFor("hook"), tipAngle: 120 });
+run("fan-mount", { ...paramsFor("fan-mount"), leg1OffsetX: 20, leg1OffsetY: -15 });
+run("charm-peg-panel", { ...paramsFor("charm-peg-panel"), enableConnectors: false });
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);

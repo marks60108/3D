@@ -5,6 +5,8 @@ import { tubeTemplate } from "./tube";
 import { hookTemplate } from "./hook";
 import { fanMountTemplate } from "./fanMount";
 import { fanMountReinforcedTemplate } from "./fanMountReinforced";
+import { fanMountFrameTemplate } from "./fanMountFrame";
+import { fanMountLegTemplate } from "./fanMountLeg";
 import { dimmInstallerTemplate } from "./dimmInstaller";
 import { deviceRiserTemplate } from "./deviceRiser";
 import { charmPegPanelTemplate } from "./charmPegPanel";
@@ -16,6 +18,8 @@ export const templates: Template[] = [
   hookTemplate,
   fanMountTemplate,
   fanMountReinforcedTemplate,
+  fanMountFrameTemplate,
+  fanMountLegTemplate,
   dimmInstallerTemplate,
   deviceRiserTemplate,
   charmPegPanelTemplate,
