@@ -5,6 +5,7 @@ import { tubeTemplate } from "./tube";
 import { hookTemplate } from "./hook";
 import { fanMountTemplate } from "./fanMount";
 import { dimmInstallerTemplate } from "./dimmInstaller";
+import { deviceRiserTemplate } from "./deviceRiser";
 
 export const templates: Template[] = [
   containerTemplate,
@@ -13,6 +14,7 @@ export const templates: Template[] = [
   hookTemplate,
   fanMountTemplate,
   dimmInstallerTemplate,
+  deviceRiserTemplate,
 ];
 
 export * from "./types";
