@@ -9,6 +9,7 @@ import { fanMountFrameTemplate } from "./fanMountFrame";
 import { fanMountLegTemplate } from "./fanMountLeg";
 import { dimmInstallerTemplate } from "./dimmInstaller";
 import { deviceRiserTemplate } from "./deviceRiser";
+import { deviceTrayTemplate } from "./deviceTray";
 import { charmPegPanelTemplate } from "./charmPegPanel";
 
 /** Category assigned per template id (kept here so template files stay focused
@@ -20,6 +21,7 @@ const CATEGORY_BY_ID: Record<string, TemplateCategory> = {
   "fan-mount-leg": "server",
   "dimm-installer": "server",
   "device-riser": "server",
+  "device-tray": "server",
   container: "storage-display",
   "charm-peg-panel": "storage-display",
   hook: "storage-display",
@@ -34,6 +36,7 @@ export const templates: Template[] = [
   fanMountLegTemplate,
   dimmInstallerTemplate,
   deviceRiserTemplate,
+  deviceTrayTemplate,
   containerTemplate,
   charmPegPanelTemplate,
   hookTemplate,
