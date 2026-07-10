@@ -1,4 +1,4 @@
-import type { Template } from "./types";
+import type { Template, TemplateCategory } from "./types";
 import { containerTemplate } from "./container";
 import { bracketTemplate } from "./bracket";
 import { tubeTemplate } from "./tube";
@@ -11,18 +11,59 @@ import { dimmInstallerTemplate } from "./dimmInstaller";
 import { deviceRiserTemplate } from "./deviceRiser";
 import { charmPegPanelTemplate } from "./charmPegPanel";
 
+/** Category assigned per template id (kept here so template files stay focused
+ * on geometry). */
+const CATEGORY_BY_ID: Record<string, TemplateCategory> = {
+  "fan-mount": "server",
+  "fan-mount-reinforced": "server",
+  "fan-mount-frame": "server",
+  "fan-mount-leg": "server",
+  "dimm-installer": "server",
+  "device-riser": "server",
+  container: "storage-display",
+  "charm-peg-panel": "storage-display",
+  hook: "storage-display",
+  bracket: "generic",
+  tube: "generic",
+};
+
 export const templates: Template[] = [
-  containerTemplate,
-  bracketTemplate,
-  tubeTemplate,
-  hookTemplate,
   fanMountTemplate,
   fanMountReinforcedTemplate,
   fanMountFrameTemplate,
   fanMountLegTemplate,
   dimmInstallerTemplate,
   deviceRiserTemplate,
+  containerTemplate,
   charmPegPanelTemplate,
+  hookTemplate,
+  bracketTemplate,
+  tubeTemplate,
+].map((t) => ({ ...t, category: t.category ?? CATEGORY_BY_ID[t.id] ?? "generic" }));
+
+export const CATEGORY_ORDER: TemplateCategory[] = [
+  "server",
+  "storage-display",
+  "generic",
 ];
+
+export const CATEGORY_LABELS: Record<TemplateCategory, string> = {
+  server: "伺服器 / 機殼散熱",
+  "storage-display": "收納 / 展示",
+  generic: "通用幾何",
+};
+
+/** Templates grouped by category in display order (empty categories omitted). */
+export function templatesByCategory(): {
+  category: TemplateCategory;
+  label: string;
+  items: Template[];
+}[] {
+  return CATEGORY_ORDER.map((category) => ({
+    category,
+    label: CATEGORY_LABELS[category],
+    items: templates.filter((t) => t.category === category),
+  })).filter((g) => g.items.length > 0);
+}
 
 export * from "./types";

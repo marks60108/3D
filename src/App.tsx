@@ -3,9 +3,10 @@ import * as THREE from "three";
 import type { ManifoldToplevel, Manifold } from "manifold-3d";
 import { getManifoldModule, manifoldToGeometry, manifoldBounds } from "./lib/manifold";
 import { downloadStl } from "./lib/exportStl";
-import { templates, defaultValues } from "./templates";
+import { templates, defaultValues, templatesByCategory } from "./templates";
 import type { ParamValues } from "./templates/types";
 import { ParamPanel } from "./components/ParamPanel";
+import { PresetBar } from "./components/PresetBar";
 import { Viewport, BUILD_VOLUME } from "./components/Viewport";
 import { StackEditor } from "./components/StackEditor";
 import {
@@ -124,14 +125,28 @@ function App() {
                     setValues(defaultValues(next.params));
                   }}
                 >
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
+                  {templatesByCategory().map((group) => (
+                    <optgroup key={group.category} label={group.label}>
+                      {group.items.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               </label>
               <p className="template-description">{template.description}</p>
+              <PresetBar templateId={template.id} values={values} onLoad={setValues} />
+              <div className="template-actions">
+                <button
+                  type="button"
+                  className="reset-button"
+                  onClick={() => setValues(defaultValues(template.params))}
+                >
+                  重置此模板為預設值
+                </button>
+              </div>
               <ParamPanel params={template.params} values={values} onChange={handleParamChange} />
             </>
           ) : (
