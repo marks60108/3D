@@ -15,6 +15,10 @@ export const deviceTrayTemplate: Template = {
     { kind: "number", key: "totalHeight", label: "托盤總高", min: 5, max: 40, step: 1, default: 10, unit: "mm" },
     { kind: "number", key: "restHeight", label: "設備擱放高度(底下空氣層高)", min: 3, max: 30, step: 0.5, default: 6, unit: "mm" },
     { kind: "number", key: "ribThickness", label: "格柵肋條寬度", min: 1.5, max: 6, step: 0.5, default: 2.5, unit: "mm" },
+    { kind: "number", key: "footHeight", label: "腳架高度(0=無腳貼桌;有腳散熱更好但更高)", min: 0, max: 60, step: 1, default: 12, unit: "mm" },
+    { kind: "number", key: "footSize", label: "腳粗細(方形截面)", min: 6, max: 30, step: 1, default: 12, unit: "mm" },
+    { kind: "number", key: "footInset", label: "腳距外緣內縮", min: 2, max: 30, step: 1, default: 8, unit: "mm", group: "進階" },
+    { kind: "number", key: "extraFeetPerLongSide", label: "長邊額外加腳(每邊)", min: 0, max: 4, step: 1, default: 1, group: "進階" },
     { kind: "number", key: "ribsAlongDepth", label: "橫向肋條數(跨寬度)", min: 2, max: 12, step: 1, default: 4, group: "進階" },
     { kind: "number", key: "ribsAlongWidth", label: "縱向肋條數(跨深度)", min: 2, max: 16, step: 1, default: 5, group: "進階" },
     { kind: "number", key: "ventCount", label: "圍邊每側通風槽數量", min: 0, max: 12, step: 1, default: 4, group: "進階" },
@@ -28,6 +32,10 @@ export const deviceTrayTemplate: Template = {
     const totalHeight = num(values, "totalHeight");
     const restHeightRaw = num(values, "restHeight");
     const ribThickness = num(values, "ribThickness");
+    const footHeight = num(values, "footHeight");
+    const footSize = num(values, "footSize");
+    const footInset = num(values, "footInset");
+    const extraFeetPerLongSide = Math.round(num(values, "extraFeetPerLongSide"));
     const ribsAlongDepth = Math.round(num(values, "ribsAlongDepth"));
     const ribsAlongWidth = Math.round(num(values, "ribsAlongWidth"));
     const ventCount = Math.round(num(values, "ventCount"));
@@ -121,6 +129,32 @@ export const deviceTrayTemplate: Template = {
 
       const allVents = [...makeVents(innerW, "x"), ...makeVents(innerD, "y")];
       for (const v of allVents) tray = tray.subtract(v);
+    }
+
+    // Optional feet: lift the whole tray so air can also rise from beneath the
+    // grille (better cooling), at the cost of extra height.
+    if (footHeight > 0) {
+      tray = tray.translate([0, 0, footHeight]);
+
+      const feetY = [footInset + footSize / 2, outerD - footInset - footSize / 2];
+      const nAlong = 2 + extraFeetPerLongSide;
+      const xStart = footInset + footSize / 2;
+      const xEnd = outerW - footInset - footSize / 2;
+      const overlap = 0.6;
+      const feet: Manifold[] = [];
+      for (const fy of feetY) {
+        for (let i = 0; i < nAlong; i++) {
+          const fx = nAlong > 1 ? xStart + (i * (xEnd - xStart)) / (nAlong - 1) : (xStart + xEnd) / 2;
+          feet.push(
+            M.Manifold.cube([footSize, footSize, footHeight + overlap], false).translate([
+              fx - footSize / 2,
+              fy - footSize / 2,
+              0,
+            ])
+          );
+        }
+      }
+      tray = M.Manifold.union([tray, ...feet]);
     }
 
     return tray;
