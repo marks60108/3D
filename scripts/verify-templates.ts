@@ -50,7 +50,8 @@ run("hook", { ...paramsFor("hook"), twoHoles: false, tipAngle: 0 });
 run("hook", { ...paramsFor("hook"), tipAngle: 120 });
 run("fan-mount", { ...paramsFor("fan-mount"), leg1OffsetX: 20, leg1OffsetY: -15 });
 run("charm-peg-panel", { ...paramsFor("charm-peg-panel"), enableConnectors: false });
-run("device-tray", { ...paramsFor("device-tray"), footHeight: 0 });
+run("device-tray", { ...paramsFor("device-tray"), liftHeight: 0 });
+run("device-tray", { ...paramsFor("device-tray"), liftHeight: 40 });
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
