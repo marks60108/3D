@@ -20,6 +20,29 @@ function chamferEdgeAlongX(
     .translate([midX, y, z]);
 }
 
+/** A funnel-shaped slot cut: wide at the mouth (bottom, facing the PCB),
+ * tapering to a snug `functionalWidth` at full depth so the tool self-guides
+ * on insertion but seats without play. Centered at (cx, cy). */
+function buildTaperedSlotCut(
+  M: ManifoldToplevel,
+  cx: number,
+  cy: number,
+  slotLength: number,
+  functionalWidth: number,
+  mouthWidth: number,
+  slotDepth: number
+): Manifold {
+  const overshoot = 0.6;
+  const height = slotDepth + overshoot;
+  const section = M.CrossSection.square([slotLength, mouthWidth], true);
+  const ratio = functionalWidth / mouthWidth;
+  return M.Manifold.extrude(section, height, 0, 0, [1, ratio]).translate([
+    cx,
+    cy,
+    -overshoot,
+  ]);
+}
+
 /** Subtracts a right-triangle chamfer (leg length = size) from an edge
  * running along Y, at the given X/Z corner. */
 function chamferEdgeAlongY(
@@ -53,8 +76,9 @@ export const dimmInstallerTemplate: Template = {
     { kind: "number", key: "handleChamfer", label: "握把頂邊斜切量(逼近 R3 圓角)", min: 0, max: 8, step: 0.1, default: 3, unit: "mm" },
     { kind: "number", key: "innerPocketLength", label: "內側口袋總長(對齊 DIMM 長度+公差)", min: 40, max: 195, step: 0.05, default: 133.8, unit: "mm" },
     { kind: "number", key: "slotLength", label: "兩端夾持槽長度", min: 4, max: 30, step: 0.5, default: 10, unit: "mm" },
-    { kind: "number", key: "slotWidth", label: "夾持槽寬度(PCB 厚度+公差)", min: 0.8, max: 4, step: 0.05, default: 1.5, unit: "mm" },
-    { kind: "number", key: "slotDepth", label: "夾持槽深度", min: 1, max: 8, step: 0.1, default: 3, unit: "mm" },
+    { kind: "number", key: "slotWidth", label: "夾持槽深處貼合寬度(壓到底貼住 PCB,穩定用)", min: 0.8, max: 4, step: 0.05, default: 1.6, unit: "mm" },
+    { kind: "number", key: "slotMouthFlare", label: "槽口導入加寬(漏斗形,好套入)", min: 0, max: 4, step: 0.1, default: 1.6, unit: "mm" },
+    { kind: "number", key: "slotDepth", label: "夾持槽深度(越深壓起來越穩)", min: 1, max: 12, step: 0.1, default: 4, unit: "mm" },
     { kind: "number", key: "centerClearanceDepth", label: "中央鏤空深度(晶片安全淨空)", min: 2, max: 10, step: 0.1, default: 4, unit: "mm" },
     { kind: "number", key: "endCapDepth", label: "端蓋下沉深度(防滑)", min: 0, max: 15, step: 0.5, default: 6, unit: "mm" },
     { kind: "number", key: "endCapThickness", label: "端蓋厚度", min: 1, max: 8, step: 0.5, default: 3, unit: "mm" },
@@ -70,6 +94,7 @@ export const dimmInstallerTemplate: Template = {
     const innerPocketLength = num(values, "innerPocketLength");
     const slotLength = num(values, "slotLength");
     const slotWidth = num(values, "slotWidth");
+    const slotMouthFlare = num(values, "slotMouthFlare");
     const slotDepth = num(values, "slotDepth");
     const centerClearanceDepth = num(values, "centerClearanceDepth");
     const endCapDepth = num(values, "endCapDepth");
@@ -131,18 +156,27 @@ export const dimmInstallerTemplate: Template = {
     const pocketMargin = (mainBodyLength - innerPocketLength) / 2;
     const pocketStart = pocketMargin;
     const pocketEnd = mainBodyLength - pocketMargin;
-    const slotY0 = (mainBodyWidth - slotWidth) / 2;
+    const bodyCenterY = mainBodyWidth / 2;
+    const mouthWidth = slotWidth + 2 * slotMouthFlare;
 
-    const leftSlot = M.Manifold.cube([slotLength, slotWidth, slotDepth + 1], false).translate([
-      pocketStart,
-      slotY0,
-      -0.5,
-    ]);
-    const rightSlot = M.Manifold.cube([slotLength, slotWidth, slotDepth + 1], false).translate([
-      pocketEnd - slotLength,
-      slotY0,
-      -0.5,
-    ]);
+    const leftSlot = buildTaperedSlotCut(
+      M,
+      pocketStart + slotLength / 2,
+      bodyCenterY,
+      slotLength,
+      slotWidth,
+      mouthWidth,
+      slotDepth
+    );
+    const rightSlot = buildTaperedSlotCut(
+      M,
+      pocketEnd - slotLength / 2,
+      bodyCenterY,
+      slotLength,
+      slotWidth,
+      mouthWidth,
+      slotDepth
+    );
     body = body.subtract(leftSlot).subtract(rightSlot);
 
     // --- Center clearance zone: fully open across the whole width ---
