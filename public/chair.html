@@ -82309,7 +82309,7 @@ const D = {
   seatThick: 7,
   sideWallH: 15,      // LOW hip walls so the doll can be dropped in
   sideWallT: 6,
-  seatTopY: 60,       // height of the seat surface above the ground
+  seatTopY: 66,       // height of the seat surface above the ground
 
   // back shell
   backW: 100,
@@ -82322,7 +82322,13 @@ const D = {
   // legs (separate wood-colour frame that pegs under the seat)
   legTopR: 5.6, legBotR: 3.8, legSplay: 0.28,
   yokeT: 7,
-  peg: 8, pegH: 9,    // pegs up from the leg yoke into seat sockets
+
+  // leg joint: real hollow sockets under the seat + matching pegs on the yoke.
+  // ONE clearance drives both, so peg outer = socket bore - clearance always.
+  socketLen: 13,      // socket tube length hanging below the seat
+  socketBoreR: 4.0,   // inner bore radius
+  socketWall: 2.6,    // tube wall
+  pegInsert: 11,      // how far the peg reaches up into the bore
 
   // tray (separate, clips on the front)
   trayW: 98, trayD: 54, trayT: 6, trayRim: 5,
@@ -82335,6 +82341,13 @@ D.seatInnerW = D.seatW - 2 * D.sideWallT;
 D.seatBackZ = -D.seatD / 2;   // rear edge of the seat = base of the back
 D.clipPegY = D.seatTopY + 6;  // tray clip pegs on the shell front sides
 D.clipPegZ = D.seatD / 2 - 10;
+// shared leg-joint anchors — sockets (shell) and pegs (legs) both read these,
+// so the two parts can never drift out of alignment
+D.pegR = D.socketBoreR - D.clr;                 // peg outer radius (slip fit)
+D.legJointX = D.seatW / 2 - 24;
+D.legJointZ = D.seatD / 2 - 22;
+D.seatBottomY = D.seatTopY - D.seatThick;
+D.socketBotY = D.seatBottomY - D.socketLen;     // where the leg yoke meets
 
 const COL = {
   shell: 0xf6f1e7,   // cream
@@ -82369,6 +82382,16 @@ function outlinePath(shape, segments) {
   for (let i = 1; i < pts.length; i++) p.lineTo(pts[i].x, pts[i].y);
   p.closePath();
   return p;
+}
+
+// flat annulus (ring) shape — extrudes to a hollow tube
+function ringShape(outerR, innerR) {
+  const s = new THREE.Shape();
+  s.absarc(0, 0, outerR, 0, Math.PI * 2, false);
+  const hole = new THREE.Path();
+  hole.absarc(0, 0, innerR, 0, Math.PI * 2, true);
+  s.holes.push(hole);
+  return s;
 }
 
 // teardrop / bunny-ear shape, base at (0,0) pointing +y
@@ -82471,8 +82494,17 @@ function buildShell() {
     g.add(inner);
   }
 
-  // --- leg sockets: blind holes in the seat underside (visualised as recesses) ---
-  // (kept implicit — the leg pegs simply insert up against the seat bottom)
+  // --- leg sockets: real hollow tubes hanging under the seat that receive the
+  // leg pegs (a proper slip-fit joint, not a peg butting a flat surface) ---
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const socket = new THREE.Mesh(
+      extrudeSmooth(ringShape(D.socketBoreR + D.socketWall, D.socketBoreR), D.socketLen, 0.4),
+      m
+    );
+    socket.rotation.x = Math.PI / 2;   // tube axis vertical, opening downward
+    socket.position.set(sx * D.legJointX, D.seatBottomY + 1.5, sz * D.legJointZ);  // overlap into the seat to weld
+    g.add(socket);
+  }
 
   // --- tray clip pegs: small cylinders on the front-outer sides of the seat ---
   for (const sx of [-1, 1]) {
@@ -82499,8 +82531,7 @@ function buildLegs() {
   const g = new THREE.Group();
   const m = mat(COL.leg);
 
-  const yokeTopY = D.seatTopY - D.seatThick;     // meets the seat underside
-  const yokeCY = yokeTopY - D.yokeT / 2;
+  const yokeTopY = D.socketBotY;                 // meets the bottom of the sockets
   const yokeBotY = yokeTopY - D.yokeT;
 
   const yoke = new THREE.Mesh(
@@ -82508,18 +82539,17 @@ function buildLegs() {
     m
   );
   yoke.rotation.x = -Math.PI / 2;
-  yoke.position.y = yokeCY + D.yokeT / 2;
+  yoke.position.y = yokeBotY;
   g.add(yoke);
 
-  // 4 pegs up into the seat underside
-  const px = D.seatW / 2 - 24;
-  const pz = D.seatD / 2 - 22;
+  // 4 pegs rising from the yoke UP into the shell sockets (shared anchors so the
+  // peg outer radius = socket bore - clearance, always a matched slip fit)
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const peg = new THREE.Mesh(
-      new THREE.CylinderGeometry(D.peg / 2 - D.clr, D.peg / 2 - D.clr, D.pegH, 20),
+      new THREE.CylinderGeometry(D.pegR, D.pegR, D.pegInsert, 24),
       m
     );
-    peg.position.set(sx * px, yokeTopY + D.pegH / 2 - 1, sz * pz);
+    peg.position.set(sx * D.legJointX, yokeTopY + D.pegInsert / 2, sz * D.legJointZ);
     g.add(peg);
   }
 
