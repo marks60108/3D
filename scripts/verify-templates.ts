@@ -52,6 +52,8 @@ run("fan-mount", { ...paramsFor("fan-mount"), leg1OffsetX: 20, leg1OffsetY: -15 
 run("charm-peg-panel", { ...paramsFor("charm-peg-panel"), enableConnectors: false });
 run("device-tray", { ...paramsFor("device-tray"), liftHeight: 0 });
 run("device-tray", { ...paramsFor("device-tray"), liftHeight: 40 });
+run("doll-high-chair", { ...paramsFor("doll-high-chair"), incBackrest: false, incSeat: false, incSides: false });
+run("doll-swing", { ...paramsFor("doll-swing"), incArch: false, incFrames: false, incCaps: false });
 
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
