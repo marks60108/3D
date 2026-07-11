@@ -1,28 +1,6 @@
 import type { Template } from "./types";
 import { num } from "./types";
-import type { Manifold, ManifoldToplevel } from "manifold-3d";
-
-function buildStrut(
-  M: ManifoldToplevel,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  width: number,
-  thickness: number,
-  zBase: number
-): Manifold {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const length = Math.sqrt(dx * dx + dy * dy) + 3;
-  const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
-  const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
-
-  return M.Manifold.cube([length, width, thickness], true)
-    .rotate([0, 0, angleDeg])
-    .translate([midX, midY, zBase + thickness / 2]);
-}
+import { buildStrut } from "./geo";
 
 export const fanMountReinforcedTemplate: Template = {
   id: "fan-mount-reinforced",

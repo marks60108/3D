@@ -55,6 +55,23 @@ run("device-tray", { ...paramsFor("device-tray"), liftHeight: 40 });
 run("doll-high-chair", { ...paramsFor("doll-high-chair"), incBackrest: false, incSeat: false, incSides: false });
 run("doll-swing", { ...paramsFor("doll-swing"), incArch: false, incFrames: false, incCaps: false });
 
+console.log("--- extreme-value guards ---");
+// inner >= outer must still leave a wall, not hollow the part out
+run("tube", { ...paramsFor("tube"), outerDiameter: 10, innerDiameter: 20 });
+// floor thicker than the box height must not invert the cavity
+run("container", { ...paramsFor("container"), height: 5, floorThickness: 6, hasLid: true });
+// funnel mouth wider than the body must keep slot walls
+run("dimm-installer", { ...paramsFor("dimm-installer"), slotMouthFlare: 4, mainBodyWidth: 6 });
+// T-slot must not break through the rail roof
+run("fan-mount-frame", { ...paramsFor("fan-mount-frame"), railThickness: 6, slotNeckDepth: 4, slotHeadDepth: 10 });
+// hole inset beyond the arm must stay inside the part
+run("bracket", { ...paramsFor("bracket"), armA: 12, armB: 12, holeInset: 40 });
+// a leg dragged inward on both axes must stay attached to the frame
+run("device-riser", { ...paramsFor("device-riser"), leg1OffsetX: 50, leg1OffsetY: 50 });
+// tiny chairs/swings must skip the decorative cutout, not shatter
+run("doll-high-chair", { ...paramsFor("doll-high-chair"), seatDepth: 25, seatHeight: 20 });
+run("doll-swing", { ...paramsFor("doll-swing"), frameBaseWidth: 40, frameHeight: 50 });
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

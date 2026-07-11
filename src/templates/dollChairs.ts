@@ -1,99 +1,7 @@
 import type { Template, ParamValues } from "./types";
 import { num, bool } from "./types";
-import type { CrossSection, Manifold, ManifoldToplevel } from "manifold-3d";
-
-/* ---------- 2D helpers (all shapes built as CrossSections, then extruded so
- * every part prints flat with zero supports) ---------- */
-
-/** Rounded rectangle centered at (cx, cy). */
-function rrect(
-  M: ManifoldToplevel,
-  w: number,
-  h: number,
-  r: number,
-  cx = 0,
-  cy = 0
-): CrossSection {
-  const rr = Math.min(r, w / 2 - 0.01, h / 2 - 0.01);
-  const c = (x: number, y: number) => M.CrossSection.circle(rr, 24).translate(x, y);
-  return M.CrossSection.hull([
-    c(cx - w / 2 + rr, cy - h / 2 + rr),
-    c(cx + w / 2 - rr, cy - h / 2 + rr),
-    c(cx + w / 2 - rr, cy + h / 2 - rr),
-    c(cx - w / 2 + rr, cy + h / 2 - rr),
-  ]);
-}
-
-function rect(M: ManifoldToplevel, w: number, h: number, cx = 0, cy = 0): CrossSection {
-  return M.CrossSection.square([w, h], true).translate(cx, cy);
-}
-
-function ellipse(M: ManifoldToplevel, rx: number, ry: number, cx = 0, cy = 0): CrossSection {
-  return M.CrossSection.circle(1, 48).scale([rx, ry]).translate(cx, cy);
-}
-
-/** Rabbit ear: elongated tapered oval, base sitting at (cx, baseY), pointing +y. */
-function rabbitEar(
-  M: ManifoldToplevel,
-  earW: number,
-  earH: number,
-  cx: number,
-  baseY: number
-): CrossSection {
-  const r1 = earW / 2;
-  const r2 = Math.max(earW * 0.36, 1);
-  return M.CrossSection.hull([
-    M.CrossSection.circle(r1, 24).translate(cx, baseY + r1),
-    M.CrossSection.circle(r2, 24).translate(cx, baseY + earH - r2),
-  ]);
-}
-
-/** Rounded trapezoid (wider at bottom), base on y=0, centered on x=0. */
-function trap(
-  M: ManifoldToplevel,
-  bottomW: number,
-  topW: number,
-  h: number,
-  r: number
-): CrossSection {
-  const c = (x: number, y: number) => M.CrossSection.circle(r, 24).translate(x, y);
-  return M.CrossSection.hull([
-    c(-(bottomW / 2 - r), r),
-    c(bottomW / 2 - r, r),
-    c(topW / 2 - r, h - r),
-    c(-(topW / 2 - r), h - r),
-  ]);
-}
-
-/** Shelf-pack parts left-to-right using their real bounding boxes, wrapping to
- * a new row past ~230mm so the plate always fits the P2S bed, then shift the
- * whole plate's min corner to the origin. */
-function layoutParts(M: ManifoldToplevel, parts: Manifold[], gap: number): Manifold {
-  if (parts.length === 0) {
-    throw new Error("至少要勾選一個分件");
-  }
-  const maxRowWidth = 230;
-  let cursorX = 0;
-  let cursorY = 0;
-  let rowDepth = 0;
-  const placed: Manifold[] = [];
-  for (const part of parts) {
-    const b = part.boundingBox();
-    const w = b.max[0] - b.min[0];
-    const d = b.max[1] - b.min[1];
-    if (cursorX > 0 && cursorX + w > maxRowWidth) {
-      cursorX = 0;
-      cursorY += rowDepth + gap;
-      rowDepth = 0;
-    }
-    placed.push(part.translate([cursorX - b.min[0], cursorY - b.min[1], -b.min[2]]));
-    cursorX += w + gap;
-    rowDepth = Math.max(rowDepth, d);
-  }
-  const all = placed.length === 1 ? placed[0] : M.Manifold.union(placed);
-  const bb = all.boundingBox();
-  return all.translate([-bb.min[0], -bb.min[1], -bb.min[2]]);
-}
+import type { Manifold } from "manifold-3d";
+import { rrect, rect, ellipse, rabbitEar, trap, layoutParts } from "./geo";
 
 /* =====================================================================
  * 餐桌椅 Doll High Chair — 分件:背板(兔耳)、座板、左右腳架、餐盤
@@ -182,15 +90,18 @@ export const dollHighChairTemplate: Template = {
 
     if (bool(values, "incSides")) {
       let cs = trap(M, sideBaseW, seatD, seatH, 7);
-      // lightweight interior cutout
-      cs = cs.subtract(
-        M.CrossSection.hull([
-          M.CrossSection.circle(5, 24).translate(-(sideBaseW / 2 - 13), 13),
-          M.CrossSection.circle(5, 24).translate(sideBaseW / 2 - 13, 13),
-          M.CrossSection.circle(5, 24).translate(seatD / 2 - 13, seatH - 13),
-          M.CrossSection.circle(5, 24).translate(-(seatD / 2 - 13), seatH - 13),
-        ])
-      );
+      // lightweight interior cutout — only when the frame is big enough for
+      // the cutout to leave sound borders (skip on tiny chairs)
+      if (sideBaseW >= 40 && seatD >= 32 && seatH >= 32) {
+        cs = cs.subtract(
+          M.CrossSection.hull([
+            M.CrossSection.circle(5, 24).translate(-(sideBaseW / 2 - 13), 13),
+            M.CrossSection.circle(5, 24).translate(sideBaseW / 2 - 13, 13),
+            M.CrossSection.circle(5, 24).translate(seatD / 2 - 13, seatH - 13),
+            M.CrossSection.circle(5, 24).translate(-(seatD / 2 - 13), seatH - 13),
+          ])
+        );
+      }
       // seat tab slot near the top edge
       cs = cs.subtract(rect(M, sideTabD + 2 * c, t + 2 * c, 0, seatH - 4.6));
       const side = M.Manifold.extrude(cs, t);
@@ -301,15 +212,18 @@ export const dollSwingTemplate: Template = {
         cs,
         M.CrossSection.circle(rockerR, 96).translate(0, rockerR)
       );
-      // lightweight interior cutout
-      cs = cs.subtract(
-        M.CrossSection.hull([
-          M.CrossSection.circle(5, 24).translate(-(frameBaseW / 2 - 11), 13),
-          M.CrossSection.circle(5, 24).translate(frameBaseW / 2 - 11, 13),
-          M.CrossSection.circle(5, 24).translate(frameTopW / 2 - 9, frameH - 24),
-          M.CrossSection.circle(5, 24).translate(-(frameTopW / 2 - 9), frameH - 24),
-        ])
-      );
+      // lightweight interior cutout — only when the frame is big enough for
+      // the cutout to leave sound borders (skip on tiny swings)
+      if (frameBaseW >= 44 && frameH >= 55) {
+        cs = cs.subtract(
+          M.CrossSection.hull([
+            M.CrossSection.circle(5, 24).translate(-(frameBaseW / 2 - 11), 13),
+            M.CrossSection.circle(5, 24).translate(frameBaseW / 2 - 11, 13),
+            M.CrossSection.circle(5, 24).translate(frameTopW / 2 - 9, frameH - 24),
+            M.CrossSection.circle(5, 24).translate(-(frameTopW / 2 - 9), frameH - 24),
+          ])
+        );
+      }
       // through-hole for the arch end tab
       cs = cs.subtract(rect(M, t + 2 * c, archTabH + 2 * c, 0, frameH - 10));
       const frame = M.Manifold.extrude(cs, t);

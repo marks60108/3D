@@ -20,10 +20,12 @@ export const containerTemplate: Template = {
     const depth = num(values, "depth");
     const height = num(values, "height");
     const wall = num(values, "wallThickness");
-    const floor = num(values, "floorThickness");
+    // Floor can't consume the whole height, and the lid lip can't be deeper
+    // than the cavity it plugs into.
+    const floor = Math.min(num(values, "floorThickness"), height - 1);
     const hasLid = bool(values, "hasLid");
     const clearance = num(values, "lidClearance");
-    const lipHeight = num(values, "lidLipHeight");
+    const lipHeight = Math.min(num(values, "lidLipHeight"), height - floor);
 
     const outer = M.Manifold.cube([width, depth, height], false);
     const cavityW = Math.max(width - 2 * wall, 0.1);

@@ -52,4 +52,6 @@ npm run verify    # 在 Node 中驗證所有模板都能正確產生幾何(不�
 
 Vite + React + TypeScript,3D 渲染用 `@react-three/fiber`(Three.js),實體布林運算(挖孔、合併)用 [manifold-3d](https://github.com/elalish/manifold) 的 WASM 版本,STL 匯出用 `three-stdlib` 的 `STLExporter`。
 
-新增模板的方式:在 `src/templates/` 建立一個檔案,依照 `types.ts` 的 `Template` 介面定義參數與 `build()` 函式,再到 `src/templates/index.ts` 註冊。建議加完模板後在 `scripts/verify-templates.ts` 補一筆驗證,執行 `npm run verify` 確認幾何正確(無需開瀏覽器)。
+新增模板的方式:在 `src/templates/` 建立一個檔案,依照 `types.ts` 的 `Template` 介面定義參數與 `build()` 函式,再到 `src/templates/index.ts` 註冊。共用的幾何工具(連接臂、圓角矩形、兔耳、分件排版等)在 `src/templates/geo.ts`。建議加完模板後在 `scripts/verify-templates.ts` 補一筆驗證,執行 `npm run verify` 確認幾何正確(無需開瀏覽器)。
+
+設計審查紀錄(每個模板檢查過什麼、修過什麼)見 [docs/DESIGN-REVIEW.md](docs/DESIGN-REVIEW.md)。

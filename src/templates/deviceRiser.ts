@@ -62,11 +62,23 @@ export const deviceRiserTemplate: Template = {
     ];
 
     let mount = frame;
+    const legHalf = legSize / 2;
+    // A leg touches the frame only under the rim ring. Moving a corner leg
+    // inward on BOTH axes would detach it into a floating part, so if neither
+    // axis still overlaps its rim band, pull the closer axis back into contact.
+    const inRimBandX = (x: number) => x - legHalf < rimWidth - 1 || x + legHalf > width - rimWidth + 1;
+    const inRimBandY = (y: number) => y - legHalf < rimWidth - 1 || y + legHalf > depth - rimWidth + 1;
     for (const { sx, sy, offsetXKey, offsetYKey } of corners) {
       const baseX = sx > 0 ? legOffsetX : width - legOffsetX;
       const baseY = sy > 0 ? legOffsetY : depth - legOffsetY;
-      const cx = baseX + num(values, offsetXKey);
-      const cy = baseY + num(values, offsetYKey);
+      let cx = baseX + num(values, offsetXKey);
+      let cy = baseY + num(values, offsetYKey);
+      if (!inRimBandX(cx) && !inRimBandY(cy)) {
+        const snapX = sx > 0 ? rimWidth - 1 + legHalf - 2 : width - rimWidth + 1 - legHalf + 2;
+        const snapY = sy > 0 ? rimWidth - 1 + legHalf - 2 : depth - rimWidth + 1 - legHalf + 2;
+        if (Math.abs(cx - snapX) <= Math.abs(cy - snapY)) cx = snapX;
+        else cy = snapY;
+      }
 
       const leg = M.Manifold.cube([legSize, legSize, legHeight + legOverlap], false).translate([
         cx - legSize / 2,

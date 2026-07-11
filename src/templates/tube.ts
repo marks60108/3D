@@ -24,7 +24,9 @@ export const tubeTemplate: Template = {
     const outer = M.Manifold.cylinder(height, outerD / 2, outerD / 2, segments, false);
     if (innerD <= 0) return outer;
 
-    const innerR = innerD / 2;
+    // Keep at least a 0.4mm wall so inner >= outer can't hollow out the part.
+    const innerR = Math.min(innerD / 2, outerD / 2 - 0.4);
+    if (innerR <= 0) return outer;
     if (throughHole) {
       const inner = M.Manifold.cylinder(height + 4, innerR, innerR, segments, false).translate([
         0,

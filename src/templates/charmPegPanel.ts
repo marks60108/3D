@@ -67,7 +67,13 @@ export const charmPegPanelTemplate: Template = {
       const usable = span - 2 * margin;
       const step = tabsPerEdge > 1 ? usable / (tabsPerEdge - 1) : 0;
       const positions: number[] = [];
-      for (let i = 0; i < tabsPerEdge; i++) positions.push(margin + i * step);
+      // Keep whole tabs/slots on the edge — a tab wider than the margin would
+      // otherwise hang past the panel corner.
+      const lo = slotWidth / 2 + 1;
+      const hi = span - slotWidth / 2 - 1;
+      for (let i = 0; i < tabsPerEdge; i++) {
+        positions.push(Math.max(lo, Math.min(margin + i * step, hi)));
+      }
       return positions;
     };
 

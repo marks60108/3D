@@ -20,7 +20,11 @@ export const bracketTemplate: Template = {
     const width = num(values, "width");
     const thickness = num(values, "thickness");
     const holeR = num(values, "holeDiameter") / 2;
-    const inset = num(values, "holeInset");
+    // Keep holes fully inside the shorter arm (edge margin >= 1.5mm).
+    const inset = Math.max(
+      holeR + 1.5,
+      Math.min(num(values, "holeInset"), Math.min(armA, armB) - holeR - 1.5)
+    );
     const twoHoles = bool(values, "twoHolesPerArm");
 
     const horizontalArm = M.Manifold.cube([armA, width, thickness], false);

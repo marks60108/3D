@@ -1,28 +1,7 @@
 import type { Template } from "./types";
 import { num } from "./types";
 import type { Manifold, ManifoldToplevel } from "manifold-3d";
-
-function buildStrut(
-  M: ManifoldToplevel,
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  width: number,
-  thickness: number,
-  zBase: number
-): Manifold {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const length = Math.sqrt(dx * dx + dy * dy) + 3;
-  const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
-  const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
-
-  return M.Manifold.cube([length, width, thickness], true)
-    .rotate([0, 0, angleDeg])
-    .translate([midX, midY, zBase + thickness / 2]);
-}
+import { buildStrut } from "./geo";
 
 function buildTSlotCut(
   M: ManifoldToplevel,
@@ -102,9 +81,14 @@ export const fanMountFrameTemplate: Template = {
     const cornerInset = num(values, "cornerInset");
     const railThickness = num(values, "railThickness");
     const slotNeckWidth = num(values, "slotNeckWidth");
-    const slotNeckDepth = num(values, "slotNeckDepth");
-    const slotHeadWidth = num(values, "slotHeadWidth");
-    const slotHeadDepth = num(values, "slotHeadDepth");
+    const slotNeckDepth = Math.min(num(values, "slotNeckDepth"), railThickness - 2.5);
+    // The slot head must leave >=1.2mm of rail roof above it, or the T-slot
+    // breaks through the top and the legs fall out.
+    const slotHeadDepth = Math.min(
+      num(values, "slotHeadDepth"),
+      railThickness - slotNeckDepth - 1.2
+    );
+    const slotHeadWidth = Math.min(num(values, "slotHeadWidth"), perimeterWidth - 2);
 
     const mountCenterX = mountWidth / 2;
     const mountCenterY = mountDepth / 2;

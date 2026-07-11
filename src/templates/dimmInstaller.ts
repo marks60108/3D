@@ -90,10 +90,15 @@ export const dimmInstallerTemplate: Template = {
     const handleLength = num(values, "handleLength");
     const handleWidth = num(values, "handleWidth");
     const handleHeight = num(values, "handleHeight");
-    const handleChamfer = num(values, "handleChamfer");
+    // Chamfer can't exceed half the handle's smaller face dimension.
+    const handleChamfer = Math.min(
+      num(values, "handleChamfer"),
+      num(values, "handleWidth") / 2 - 0.5,
+      num(values, "handleHeight") - 0.5
+    );
     const innerPocketLength = num(values, "innerPocketLength");
     const slotLength = num(values, "slotLength");
-    const slotWidth = num(values, "slotWidth");
+    const slotWidth = Math.min(num(values, "slotWidth"), num(values, "mainBodyWidth") - 1.2);
     const slotMouthFlare = num(values, "slotMouthFlare");
     const slotDepth = num(values, "slotDepth");
     const centerClearanceDepth = num(values, "centerClearanceDepth");
@@ -157,7 +162,13 @@ export const dimmInstallerTemplate: Template = {
     const pocketStart = pocketMargin;
     const pocketEnd = mainBodyLength - pocketMargin;
     const bodyCenterY = mainBodyWidth / 2;
-    const mouthWidth = slotWidth + 2 * slotMouthFlare;
+    // Funnel mouth must leave >=0.6mm of wall on each side of the body, or the
+    // slot walls vanish and the tool loses all retention. Never narrower than
+    // the deep width (that would invert the taper).
+    const mouthWidth = Math.max(
+      slotWidth,
+      Math.min(slotWidth + 2 * slotMouthFlare, mainBodyWidth - 1.2)
+    );
 
     const leftSlot = buildTaperedSlotCut(
       M,
