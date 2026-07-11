@@ -52,7 +52,8 @@ run("fan-mount", { ...paramsFor("fan-mount"), leg1OffsetX: 20, leg1OffsetY: -15 
 run("charm-peg-panel", { ...paramsFor("charm-peg-panel"), enableConnectors: false });
 run("device-tray", { ...paramsFor("device-tray"), liftHeight: 0 });
 run("device-tray", { ...paramsFor("device-tray"), liftHeight: 40 });
-run("doll-high-chair", { ...paramsFor("doll-high-chair"), incBackrest: false, incSeat: false, incSides: false });
+run("doll-high-chair", { ...paramsFor("doll-high-chair"), incBackrest: false, incLegs: false });
+run("doll-high-chair", { ...paramsFor("doll-high-chair"), assembled: true });
 run("doll-swing", { ...paramsFor("doll-swing"), incArch: false, incFrames: false, incCaps: false });
 
 console.log("--- extreme-value guards ---");
@@ -69,7 +70,7 @@ run("bracket", { ...paramsFor("bracket"), armA: 12, armB: 12, holeInset: 40 });
 // a leg dragged inward on both axes must stay attached to the frame
 run("device-riser", { ...paramsFor("device-riser"), leg1OffsetX: 50, leg1OffsetY: 50 });
 // tiny chairs/swings must skip the decorative cutout, not shatter
-run("doll-high-chair", { ...paramsFor("doll-high-chair"), seatDepth: 25, seatHeight: 20 });
+run("doll-high-chair", { ...paramsFor("doll-high-chair"), seatDepth: 30, seatHeight: 20 });
 run("doll-swing", { ...paramsFor("doll-swing"), frameBaseWidth: 40, frameHeight: 50 });
 
 if (failures > 0) {

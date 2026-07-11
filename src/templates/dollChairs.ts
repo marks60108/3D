@@ -7,28 +7,37 @@ import { rrect, rect, ellipse, rabbitEar, trap, layoutParts } from "./geo";
  * 餐桌椅 Doll High Chair — 分件:背板(兔耳)、座板、左右腳架、餐盤
  * =================================================================== */
 
+/** A part in its flat (printable) pose plus the rotation+translation that
+ * moves it into the assembled chair, so one geometry serves both the print
+ * layout and the assembly preview. */
+interface AssemblyPart {
+  flat: Manifold;
+  rot: [number, number, number];
+  pos: [number, number, number];
+}
+
 export const dollHighChairTemplate: Template = {
   id: "doll-high-chair",
   name: "餐桌椅(兔耳娃娃椅・分件列印) Doll High Chair",
   description:
-    "娃娃用餐椅,分 5 件平放列印(全部免支撐),可分色印再組裝:背板(兔耳+橢圓孔)、座板、左右腳架、附圍邊餐盤。卡榫組裝:座板側榫插入腳架槽,背板下榫插入座板後槽,餐盤後臂插入背板孔。想單印某一件換色,把其他件的勾選取消即可。",
+    "娃娃用餐椅,4 件平放列印(免支撐)可分色組裝:圓弧兔耳背板(橢圓握把孔)、座板、兩支外撇腳、附圍邊餐盤。全部靠榫頭插入座板的槽固定。打開「組裝預覽」可先看組好的樣子確認榫槽對得上,再切回列印排版下載。單印某件換色就把其他件取消勾選。",
   params: [
-    { kind: "number", key: "seatWidth", label: "座椅寬度", min: 30, max: 120, step: 1, default: 55, unit: "mm" },
-    { kind: "number", key: "seatDepth", label: "座椅深度", min: 25, max: 100, step: 1, default: 45, unit: "mm" },
-    { kind: "number", key: "seatHeight", label: "座面高度", min: 20, max: 90, step: 1, default: 42, unit: "mm" },
-    { kind: "number", key: "backHeight", label: "背板高度(座面以上)", min: 25, max: 100, step: 1, default: 55, unit: "mm" },
-    { kind: "number", key: "panelT", label: "板件厚度", min: 2, max: 6, step: 0.5, default: 3, unit: "mm" },
-    { kind: "number", key: "clearance", label: "卡榫餘裕(單邊)", min: 0.1, max: 0.6, step: 0.05, default: 0.25, unit: "mm" },
-    { kind: "number", key: "earWidth", label: "兔耳寬度", min: 6, max: 30, step: 0.5, default: 13, unit: "mm", group: "耳朵造型" },
-    { kind: "number", key: "earHeight", label: "兔耳長度", min: 10, max: 60, step: 1, default: 26, unit: "mm", group: "耳朵造型" },
-    { kind: "number", key: "earSpacing", label: "兔耳間距(中心距)", min: 10, max: 80, step: 1, default: 26, unit: "mm", group: "耳朵造型" },
+    { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
+    { kind: "number", key: "seatWidth", label: "座椅寬度", min: 35, max: 120, step: 1, default: 58, unit: "mm" },
+    { kind: "number", key: "seatDepth", label: "座椅深度", min: 30, max: 100, step: 1, default: 48, unit: "mm" },
+    { kind: "number", key: "seatHeight", label: "座面高度(腳長)", min: 20, max: 90, step: 1, default: 40, unit: "mm" },
+    { kind: "number", key: "backHeight", label: "背板高度(座面以上)", min: 30, max: 100, step: 1, default: 58, unit: "mm" },
+    { kind: "number", key: "panelT", label: "板件厚度", min: 2.5, max: 6, step: 0.5, default: 3, unit: "mm" },
+    { kind: "number", key: "clearance", label: "卡榫餘裕(單邊,印太緊調大)", min: 0.1, max: 0.6, step: 0.05, default: 0.25, unit: "mm" },
+    { kind: "number", key: "earWidth", label: "兔耳寬度", min: 6, max: 30, step: 0.5, default: 15, unit: "mm", group: "耳朵造型" },
+    { kind: "number", key: "earHeight", label: "兔耳長度", min: 10, max: 60, step: 1, default: 28, unit: "mm", group: "耳朵造型" },
+    { kind: "number", key: "earSpacing", label: "兔耳間距(中心距)", min: 10, max: 80, step: 1, default: 30, unit: "mm", group: "耳朵造型" },
     { kind: "boolean", key: "incBackrest", label: "含背板", default: true, group: "分件選擇" },
     { kind: "boolean", key: "incSeat", label: "含座板", default: true, group: "分件選擇" },
-    { kind: "boolean", key: "incSides", label: "含左右腳架", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incLegs", label: "含左右腳 x2", default: true, group: "分件選擇" },
     { kind: "boolean", key: "incTray", label: "含餐盤", default: true, group: "分件選擇" },
-    { kind: "number", key: "trayDepth", label: "餐盤深度", min: 15, max: 60, step: 1, default: 28, unit: "mm", group: "進階" },
-    { kind: "number", key: "trayLift", label: "餐盤高度(座面以上)", min: 8, max: 60, step: 1, default: 22, unit: "mm", group: "進階" },
-    { kind: "number", key: "trayRimHeight", label: "餐盤圍邊高度", min: 0, max: 8, step: 0.5, default: 2.5, unit: "mm", group: "進階" },
+    { kind: "number", key: "trayDepth", label: "餐盤深度", min: 18, max: 70, step: 1, default: 34, unit: "mm", group: "進階" },
+    { kind: "number", key: "trayRimHeight", label: "餐盤圍邊高度", min: 0, max: 8, step: 0.5, default: 3, unit: "mm", group: "進階" },
     { kind: "number", key: "layoutGap", label: "分件排版間距", min: 3, max: 30, step: 1, default: 8, unit: "mm", group: "進階" },
   ],
   build: (values: ParamValues, M) => {
@@ -42,90 +51,101 @@ export const dollHighChairTemplate: Template = {
     const earH = num(values, "earHeight");
     const earSp = num(values, "earSpacing");
     const trayD = num(values, "trayDepth");
-    const trayLift = num(values, "trayLift");
     const trayRimH = num(values, "trayRimHeight");
     const gap = num(values, "layoutGap");
+    const assembled = bool(values, "assembled");
 
-    const tabW = 12; // backrest bottom tabs & seat rear slots
-    const tabSp = seatW * 0.5;
-    const traySp = seatW * 0.6; // tray arm spacing
-    const sideTabD = 14; // seat side tabs (along depth)
-    const sideBaseW = seatD + 14;
-    const trayW = seatW + 14;
-    const armLen = seatD * 0.75;
+    // --- joint dimensions (shared between mating parts so they always agree) ---
+    const backTabW = Math.min(12, seatW * 0.24);
+    const backTabSp = seatW * 0.5;
+    const backTabH = t + 4; // protrudes 4mm below the seat once seated
+    const legInset = t / 2 + 6; // x of each leg's centre-plane, from seat edge
+    const legTabLen = Math.min(seatD * 0.5, seatD - 8);
+    const trayTabW = Math.min(11, seatW * 0.22);
+    const trayTabSp = seatW * 0.5;
+    const trayNotch = 7; // coplanar tongue depth into the seat front edge
+    const trayW = seatW * 0.94;
+    const rearSlotY = -(seatD / 2 - 7); // rear slot centre (backrest)
 
-    const parts: Manifold[] = [];
+    const parts: AssemblyPart[] = [];
 
+    // ---- Backrest: rounded shell + rabbit ears + oval handle hole ----
     if (bool(values, "incBackrest")) {
-      let cs = rrect(M, seatW, backH, 10, 0, backH / 2);
+      let cs = rrect(M, seatW, backH, 12, 0, backH / 2);
       cs = M.CrossSection.union([
         cs,
-        rabbitEar(M, earW, earH, -earSp / 2, backH - 6),
-        rabbitEar(M, earW, earH, earSp / 2, backH - 6),
-        // bottom tabs (insert down into seat rear slots)
-        rect(M, tabW, t + 1.2, -tabSp / 2, -(t + 1.2) / 2),
-        rect(M, tabW, t + 1.2, tabSp / 2, -(t + 1.2) / 2),
+        rabbitEar(M, earW, earH, -earSp / 2, backH - 7),
+        rabbitEar(M, earW, earH, earSp / 2, backH - 7),
+        rect(M, backTabW, backTabH, -backTabSp / 2, -backTabH / 2),
+        rect(M, backTabW, backTabH, backTabSp / 2, -backTabH / 2),
       ]);
-      cs = cs
-        .subtract(ellipse(M, seatW * 0.24, backH * 0.12, 0, backH - 20))
-        // tray arm through-holes
-        .subtract(rect(M, tabW + 2 * c, t + 2 * c, -traySp / 2, trayLift))
-        .subtract(rect(M, tabW + 2 * c, t + 2 * c, traySp / 2, trayLift));
-      parts.push(M.Manifold.extrude(cs, t));
+      cs = cs.subtract(ellipse(M, seatW * 0.24, backH * 0.11, 0, backH * 0.6));
+      parts.push({
+        flat: M.Manifold.extrude(cs, t),
+        // stand up (local +Y -> world +Z), tabs drop through the seat rear slots
+        rot: [90, 0, 0],
+        pos: [0, rearSlotY + t / 2, seatH + t],
+      });
     }
 
+    // ---- Seat: hub plate carrying every slot ----
     if (bool(values, "incSeat")) {
-      let cs = rrect(M, seatW, seatD, 8);
-      cs = M.CrossSection.union([
-        cs,
-        // side tabs into the leg frames
-        rect(M, t + 1.2, sideTabD, -(seatW / 2 + (t + 1.2) / 2), 0),
-        rect(M, t + 1.2, sideTabD, seatW / 2 + (t + 1.2) / 2, 0),
-      ]);
+      let cs = rrect(M, seatW, seatD, 9);
+      // rear slots (backrest tabs, from above)
       cs = cs
-        .subtract(rect(M, tabW + 2 * c, t + 2 * c, -tabSp / 2, seatD / 2 - 4))
-        .subtract(rect(M, tabW + 2 * c, t + 2 * c, tabSp / 2, seatD / 2 - 4));
-      parts.push(M.Manifold.extrude(cs, t));
+        .subtract(rect(M, backTabW + 2 * c, t + 2 * c, -backTabSp / 2, rearSlotY))
+        .subtract(rect(M, backTabW + 2 * c, t + 2 * c, backTabSp / 2, rearSlotY));
+      // side slots (leg tabs, from below)
+      cs = cs
+        .subtract(rect(M, t + 2 * c, legTabLen + 2 * c, -(seatW / 2 - legInset), 0))
+        .subtract(rect(M, t + 2 * c, legTabLen + 2 * c, seatW / 2 - legInset, 0));
+      // front-edge notches (tray tongues, coplanar)
+      cs = cs
+        .subtract(rect(M, trayTabW + 2 * c, trayNotch * 2, -trayTabSp / 2, seatD / 2))
+        .subtract(rect(M, trayTabW + 2 * c, trayNotch * 2, trayTabSp / 2, seatD / 2));
+      parts.push({ flat: M.Manifold.extrude(cs, t), rot: [0, 0, 0], pos: [0, 0, seatH] });
     }
 
-    if (bool(values, "incSides")) {
-      let cs = trap(M, sideBaseW, seatD, seatH, 7);
-      // lightweight interior cutout — only when the frame is big enough for
-      // the cutout to leave sound borders (skip on tiny chairs)
-      if (sideBaseW >= 40 && seatD >= 32 && seatH >= 32) {
-        cs = cs.subtract(
-          M.CrossSection.hull([
-            M.CrossSection.circle(5, 24).translate(-(sideBaseW / 2 - 13), 13),
-            M.CrossSection.circle(5, 24).translate(sideBaseW / 2 - 13, 13),
-            M.CrossSection.circle(5, 24).translate(seatD / 2 - 13, seatH - 13),
-            M.CrossSection.circle(5, 24).translate(-(seatD / 2 - 13), seatH - 13),
-          ])
-        );
-      }
-      // seat tab slot near the top edge
-      cs = cs.subtract(rect(M, sideTabD + 2 * c, t + 2 * c, 0, seatH - 4.6));
-      const side = M.Manifold.extrude(cs, t);
-      parts.push(side);
-      parts.push(side);
+    // ---- Legs: two splayed side frames (built in a local depth×height plane) ----
+    if (bool(values, "incLegs")) {
+      const baseW = seatD + 6;
+      const topW = Math.max(seatD - 12, legTabLen + 6);
+      let cs = trap(M, baseW, topW, seatH, 6);
+      // split the lower half into a front + back leg (inverted-V gap)
+      const notchW = baseW * 0.42;
+      const notchH = seatH * 0.62;
+      cs = cs.subtract(rrect(M, notchW, notchH, Math.min(notchW, notchH) / 2 - 0.5, 0, notchH / 2 - 1));
+      // top tab (into seat side slot), flush with seat top
+      cs = M.CrossSection.union([cs, rect(M, legTabLen, t + 1, 0, seatH + (t + 1) / 2 - 0.5)]);
+      const leg = M.Manifold.extrude(cs, t);
+      // local X(depth)->world Y, local Y(height)->world Z, local Z(thick)->world X
+      parts.push({ flat: leg, rot: [90, 0, 90], pos: [-(seatW / 2 - legInset) - t / 2, 0, 0] });
+      parts.push({ flat: leg, rot: [90, 0, 90], pos: [seatW / 2 - legInset - t / 2, 0, 0] });
     }
 
+    // ---- Tray: rimmed plate that tongues into the seat front edge, coplanar ----
     if (bool(values, "incTray")) {
-      let plate = rrect(M, trayW, trayD, 9);
+      let plate = rrect(M, trayW, trayD, 10);
       plate = M.CrossSection.union([
         plate,
-        // rear arms ending in tabs that pass through the backrest holes
-        rect(M, tabW, armLen + 2, -traySp / 2, trayD / 2 + armLen / 2),
-        rect(M, tabW, armLen + 2, traySp / 2, trayD / 2 + armLen / 2),
+        rect(M, trayTabW, trayNotch + 2, -trayTabSp / 2, -(trayD / 2) - (trayNotch + 2) / 2 + 1),
+        rect(M, trayTabW, trayNotch + 2, trayTabSp / 2, -(trayD / 2) - (trayNotch + 2) / 2 + 1),
       ]);
       let tray = M.Manifold.extrude(plate, t);
       if (trayRimH > 0) {
-        const rim = rrect(M, trayW, trayD, 9).subtract(rrect(M, trayW - 8, trayD - 8, 6));
+        const rim = rrect(M, trayW, trayD, 10).subtract(rrect(M, trayW - 9, trayD - 9, 6));
         tray = M.Manifold.union(tray, M.Manifold.extrude(rim, t + trayRimH));
       }
-      parts.push(tray);
+      parts.push({ flat: tray, rot: [0, 0, 0], pos: [0, seatD / 2 + trayD / 2, seatH] });
     }
 
-    return layoutParts(M, parts, gap);
+    if (assembled) {
+      const placed = parts.map((p) => p.flat.rotate(p.rot).translate(p.pos));
+      const all = placed.length === 1 ? placed[0] : M.Manifold.union(placed);
+      const b = all.boundingBox();
+      return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
+    }
+    return layoutParts(M, parts.map((p) => p.flat), gap);
   },
 };
 
