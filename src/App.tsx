@@ -109,9 +109,6 @@ function App() {
             自訂堆疊
           </button>
         </div>
-        <a className="app__feature-link" href={`${import.meta.env.BASE_URL}chair.html`}>
-          🐰 兔耳兒童餐椅（互動預覽）
-        </a>
       </header>
 
       <div className="app__body">

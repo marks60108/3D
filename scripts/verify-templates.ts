@@ -74,6 +74,38 @@ run("device-riser", { ...paramsFor("device-riser"), leg1OffsetX: 50, leg1OffsetY
 run("doll-high-chair", { ...paramsFor("doll-high-chair"), seatDepth: 45, seatHeight: 30 });
 run("doll-swing", { ...paramsFor("doll-swing"), frameBaseWidth: 40, frameHeight: 50 });
 
+console.log("--- doll-high-chair assemblability (joint interference) ---");
+{
+  const chair = templates.find((x) => x.id === "doll-high-chair")!;
+  const base = defaultValues(chair.params);
+  const vol = (m: ReturnType<typeof chair.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    chair.build(
+      { ...base, incBack: false, incSeat: false, incLegs: false, incTray: false, ...f, ...extra, assembled: true },
+      wasm
+    );
+  // slip-fit: Vol(A)+Vol(B) - Vol(A∪B) ~ 0 means the parts don't collide
+  const pair = (label: string, a: ParamValues, b: ParamValues) => {
+    const ov = vol(only(a)) + vol(only(b)) - vol(only({ ...a, ...b }));
+    const ok = ov < 30; // real interference is hundreds of mm³; <30 is facet noise
+    if (!ok) failures++;
+    console.log(`[${ok ? "OK" : "FAIL"}] ${label}: overlap=${ov.toFixed(1)}mm³`);
+  };
+  pair("seat+legs", { incSeat: true }, { incLegs: true });
+  pair("seat+back", { incSeat: true }, { incBack: true });
+  pair("seat+tray", { incSeat: true }, { incTray: true });
+  // engagement: an oversized tenon MUST interfere, proving the tenons really do
+  // sit inside their mortises (a slip-fit alone could also mean "miss entirely")
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incSeat: true }, tight)) +
+    vol(only({ incLegs: true }, tight)) -
+    vol(only({ incSeat: true, incLegs: true }, tight));
+  const engOk = eng > 40;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] leg engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >40)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

@@ -72,10 +72,14 @@ export const dollHighChairTemplate: Template = {
     const tenonH = st + 6; // through the pan + 6mm
     const slotY = -(seatD / 2 - 9);
 
-    // --- tray clip: forward pegs on the seat front sides + ring hooks on tray ---
-    const clipPegR = 4;
-    const clipZ = seatH + Math.min(8, sideWallH * 0.5);
-    const clipY = seatD / 2 - 8;
+    // --- tray clip: two vertical posts on the seat front + rings under the tray
+    // that drop straight down over them (lift the tray off to seat the doll) ---
+    const postR = 3.5;
+    const postX = seatW / 2 - 8;
+    const postY = seatD / 2 - 8;
+    const trayLift = 12; // tray plate rides this high above the seat
+    const postH = trayLift - 0.5; // stop just below the plate so it can't poke through
+    const ringH = 9;
 
     const asmParts: Manifold[] = [];
     const printParts: Manifold[] = [];
@@ -124,40 +128,40 @@ export const dollHighChairTemplate: Template = {
       panCS = panCS.subtract(rect(M, tenonW + 2 * c, t + 2 * c, 0, slotY));
       let seat = M.Manifold.extrude(panCS, st).translate([0, 0, seatBottomZ]);
 
-      // gently dished sitting surface so the doll nestles
-      seat = seat.subtract(M.Manifold.sphere(120, 64).translate([0, 2, seatH + 120 - 3]));
+      // gently dished sitting surface so the doll nestles (never break the floor)
+      const dishDepth = Math.min(3, st * 0.5);
+      seat = seat.subtract(M.Manifold.sphere(120, 64).translate([0, 2, seatH + 120 - dishDepth]));
 
       // chamfered lead-in mouths on each mortise (self-centring, seats flush)
+      const csinkD = Math.min(2, st * 0.4);
       for (const sx of [-1, 1])
         for (const sy of [-1, 1]) {
           const csink = M.Manifold.extrude(
             rrect(M, legTenL + 2 * c + 1.6, legTenW + 2 * c + 1.6, legTenRad + c + 0.8)
               .rotate(cornerAng(sx, sy))
               .translate(sx * jointX, sy * jointY),
-            2
-          ).translate([0, 0, seatH - 2]);
+            csinkD + 0.1
+          ).translate([0, 0, seatH - csinkD]);
           seat = seat.subtract(csink);
         }
 
-      // low hip side walls (rear ~62%, front open so the doll drops in)
-      const wallLen = seatD * 0.62;
+      // low hip side walls (mid-seat, kept clear of the back panel at the rear)
+      const wallLen = seatD * 0.5;
       for (const sx of [-1, 1]) {
         seat = M.Manifold.union(
           seat,
           M.Manifold.cube([wall, wallLen, sideWallH], true).translate([
             sx * (seatW / 2 - wall / 2),
-            -seatD / 2 + wallLen / 2 + 2,
+            -2,
             seatH + sideWallH / 2,
           ])
         );
       }
-      // forward clip pegs for the tray
+      // two vertical tray posts near the front corners
       for (const sx of [-1, 1]) {
         seat = M.Manifold.union(
           seat,
-          M.Manifold.cylinder(9, clipPegR, clipPegR, 24)
-            .rotate([-90, 0, 0]) // axis -> +Y
-            .translate([sx * (seatW / 2 - 4), clipY, clipZ])
+          M.Manifold.cylinder(postH, postR, postR, 24).translate([sx * postX, postY, seatH])
         );
       }
       add(seat, seat); // prints as-is: pan down, walls up (support-free)
@@ -190,7 +194,7 @@ export const dollHighChairTemplate: Template = {
         }
     }
 
-    // ===================== Tray: rimmed plate + ring-hook arms =================
+    // ===================== Tray: rimmed plate + two drop-over rings ============
     if (bool(values, "incTray")) {
       const trayW = seatW + 2;
       let tray = M.Manifold.extrude(rrect(M, trayW, trayD, 16), t);
@@ -198,27 +202,19 @@ export const dollHighChairTemplate: Template = {
         const rim = rrect(M, trayW, trayD, 16).subtract(rrect(M, trayW - 12, trayD - 12, 11));
         tray = M.Manifold.union(tray, M.Manifold.extrude(rim, t + trayRimH));
       }
-      const armLen = Math.max(20, trayD / 2 - clipY + seatD / 2);
-      const armW = 10;
+      // rings hang below the plate's rear corners and drop over the seat posts
+      const ringInY = -trayD / 2 + 9;
       for (const sx of [-1, 1]) {
-        tray = M.Manifold.union(
-          tray,
-          M.Manifold.cube([armW, armLen, t], true).translate([
-            sx * (trayW / 2 - armW / 2),
-            -trayD / 2 - armLen / 2 + 3,
-            t / 2,
-          ])
-        );
         const ring = M.Manifold.extrude(
-          M.CrossSection.circle(clipPegR + 3, 28).subtract(M.CrossSection.circle(clipPegR + c, 24)),
-          armW
-        )
-          .rotate([-90, 0, 0]) // ring hole axis -> +Y
-          .translate([sx * (trayW / 2 - armW / 2), -trayD / 2 - armLen + 3 + armW / 2, t / 2]);
+          M.CrossSection.circle(postR + 2.6, 32).subtract(M.CrossSection.circle(postR + c, 28)),
+          ringH
+        ).translate([sx * postX, ringInY, -ringH]);
         tray = M.Manifold.union(tray, ring);
       }
-      const trayY = seatD / 2 + trayD / 2 - 4;
-      add(tray.translate([0, trayY, clipZ - t / 2]), tray);
+      // assembled: rear-corner rings sit at the posts, plate rides trayLift high
+      const trayY = postY - ringInY;
+      // print flipped so the plate lies flat and the rings point up (no overhang)
+      add(tray.translate([0, trayY, seatH + trayLift]), tray.rotate([180, 0, 0]));
     }
 
     if (asmParts.length === 0) throw new Error("至少要勾選一個分件");
