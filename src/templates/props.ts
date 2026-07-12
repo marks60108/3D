@@ -139,10 +139,12 @@ export const usagiMaceTemplate: Template = {
     { kind: "number", key: "eyeR", label: "眼睛大小", min: 0.8, max: 3, step: 0.1, default: 1.5, unit: "mm", group: "臉部微調" },
     { kind: "number", key: "eyeSpacing", label: "眼距(中心)", min: 3, max: 16, step: 0.5, default: 7, unit: "mm", group: "臉部微調" },
     { kind: "number", key: "mouthWidth", label: "嘴巴寬度", min: 5, max: 26, step: 0.5, default: 13, unit: "mm", group: "臉部微調" },
+    { kind: "boolean", key: "splitPrint", label: "整支對半分印(完全免支撐)", default: false, group: "選項" },
     { kind: "boolean", key: "keychainLoop", label: "頂端鑰匙圈吊孔", default: false, group: "選項" },
   ],
   build: (values: ParamValues, M) => {
     const style = num(values, "springStyle");
+    const splitPrint = bool(values, "splitPrint");
     const headR = num(values, "headDia") / 2;
     const handleLen = num(values, "handleLen");
     const r = num(values, "handleDia") / 2;
@@ -198,6 +200,15 @@ export const usagiMaceTemplate: Template = {
       m = M.Manifold.union(m, ring);
     }
 
+    if (splitPrint) {
+      // cut the whole prop front/back at y=0; each half prints cut-face-down
+      // (the face half comes out face-up), so nothing overhangs
+      const R = headR + handleLen;
+      const big = M.Manifold.cube([R * 4, R * 4, R * 4], true);
+      const front = m.subtract(big.translate([0, -R * 2, 0])).rotate([90, 0, 0]);
+      const back = m.subtract(big.translate([0, R * 2, 0])).rotate([-90, 0, 0]);
+      return layoutParts(M, [front, back], 8);
+    }
     const b = m.boundingBox();
     return m.translate([0, 0, -b.min[2]]);
   },
