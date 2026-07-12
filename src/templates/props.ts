@@ -125,11 +125,12 @@ export const usagiMaceTemplate: Template = {
       key: "springStyle",
       label: "彈簧樣式",
       options: [
-        { label: "① 硬螺旋(一體成型・耐用)", value: 0 },
-        { label: "② 留孔塞真彈簧(頭柄分開・最像原品)", value: 1 },
-        { label: "③ 可動 PLA 螺旋(會微彈・較脆)", value: 2 },
+        { label: "① 免支撐螺紋柱(實心・免支撐・耐用)", value: 3 },
+        { label: "② 硬螺旋(一體成型・需支撐)", value: 0 },
+        { label: "③ 留孔塞真彈簧(頭柄分開・最像原品)", value: 1 },
+        { label: "④ 可動 PLA 螺旋(會微彈・需支撐/TPU)", value: 2 },
       ],
-      default: 0,
+      default: 3,
     },
     { kind: "number", key: "headDia", label: "球頭直徑", min: 14, max: 44, step: 1, default: 24, unit: "mm" },
     { kind: "number", key: "handleLen", label: "握柄長度", min: 20, max: 100, step: 1, default: 46, unit: "mm" },
@@ -169,10 +170,14 @@ export const usagiMaceTemplate: Template = {
       );
     } else {
       const rc = r + 1.2;
-      const wire = style === 2 ? 1.4 : 1.9;
-      const turns = style === 2 ? Math.max(4, springLen / 2.4) : Math.max(3, springLen / 3.4);
       m = M.Manifold.union(m, M.Manifold.cylinder(2, rc + 1, rc + 1, 40).translate([0, 0, handleTopZ - 1]));
-      m = M.Manifold.union(m, coil(M, rc, wire, turns, handleTopZ, headBottomZ));
+      if (style === 3) {
+        m = M.Manifold.union(m, ribbedSpindle(M, r * 0.85, rc, handleTopZ, headBottomZ));
+      } else {
+        const wire = style === 2 ? 1.4 : 1.9;
+        const turns = style === 2 ? Math.max(4, springLen / 2.4) : Math.max(3, springLen / 3.4);
+        m = M.Manifold.union(m, coil(M, rc, wire, turns, handleTopZ, headBottomZ));
+      }
       m = M.Manifold.union(m, M.Manifold.cylinder(2.4, rc + 1, rc + 1, 40).translate([0, 0, headBottomZ - 1.4]));
     }
 
