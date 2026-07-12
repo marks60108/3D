@@ -28,6 +28,27 @@ function coil(
   return M.Manifold.union(beads);
 }
 
+/** A support-free "spring look": a stack of cone frustums (rInner<->rOuter) with
+ * steep flanks (≤ ~38° overhang), solid, so it prints upright without support. */
+function ribbedSpindle(
+  M: ManifoldToplevel,
+  rI: number,
+  rO: number,
+  z0: number,
+  z1: number
+): Manifold {
+  const foldH = (rO - rI) * 1.4; // steep flank -> printable overhang
+  const n = Math.max(2, Math.round((z1 - z0) / foldH));
+  const fh = (z1 - z0) / n;
+  const segs: Manifold[] = [];
+  for (let k = 0; k < n; k++) {
+    const rB = k % 2 === 0 ? rI : rO;
+    const rT = k % 2 === 0 ? rO : rI;
+    segs.push(M.Manifold.cylinder(fh, rB, rT, 48).translate([0, 0, z0 + fh * k]));
+  }
+  return M.Manifold.union(segs);
+}
+
 /** Add the Usagi face (two dot eyes + wavy zigzag mouth) onto a flat front face
  * at y = faceY, centred at z = headCz. Returns the combined manifold. */
 function addFace(
@@ -189,6 +210,17 @@ export const springPlushBallTemplate: Template = {
   category: "storage-display",
   params: [
     { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
+    {
+      kind: "select",
+      key: "springForm",
+      label: "彈簧形式",
+      options: [
+        { label: "免支撐螺紋柱(實心・耐用)", value: 0 },
+        { label: "開放螺旋(需支撐 / TPU 才會彈)", value: 1 },
+      ],
+      default: 0,
+    },
+    { kind: "boolean", key: "ballSplit", label: "球對半分印(完全免支撐)", default: false },
     { kind: "number", key: "ballDia", label: "球頭直徑", min: 20, max: 60, step: 1, default: 40, unit: "mm" },
     { kind: "number", key: "handleLen", label: "握柄長度", min: 40, max: 160, step: 1, default: 120, unit: "mm" },
     { kind: "number", key: "handleDia", label: "握柄粗細", min: 6, max: 18, step: 0.5, default: 11, unit: "mm" },
@@ -215,6 +247,8 @@ export const springPlushBallTemplate: Template = {
     const mouthW = num(values, "mouthWidth");
     const gap = num(values, "layoutGap");
     const assembled = bool(values, "assembled");
+    const springForm = num(values, "springForm");
+    const ballSplit = bool(values, "ballSplit");
 
     // shared joint: peg on ball + handle, socket at both ends of the spring
     const pegR = 3;
@@ -251,7 +285,11 @@ export const springPlushBallTemplate: Template = {
           .subtract(M.Manifold.cylinder(pegLen + 2, sockR, sockR, 32).translate([0, 0, -1]))
           .translate([0, 0, z0]);
       let s = sockTube(botSockZ); // bottom socket (receives handle peg)
-      s = M.Manifold.union(s, coil(M, sockOuterR - wire / 2, wire, Math.max(5, springLen / 3.5), coilBotZ, coilTopZ));
+      const middle =
+        springForm === 0
+          ? ribbedSpindle(M, sockOuterR - 2, sockOuterR, coilBotZ, coilTopZ)
+          : coil(M, sockOuterR - wire / 2, wire, Math.max(5, springLen / 3.5), coilBotZ, coilTopZ);
+      s = M.Manifold.union(s, middle);
       s = M.Manifold.union(s, sockTube(topSockZ)); // top socket (receives ball peg)
       parts.push({ asm: s, printRot: [0, 0, 0] }); // print standing (coil axis up)
     }
@@ -265,8 +303,18 @@ export const springPlushBallTemplate: Template = {
         M.Manifold.cylinder(pegLen + 3, pegR, pegR, 32).translate([0, 0, ballBottomZ - pegLen])
       );
       ball = addFace(M, ball, ballR, faceY, ballCz, eyeR, eyeSp, mouthW);
-      // print the ball flat-face-down (stable base, round dome up)
-      parts.push({ asm: ball, printRot: [-90, 0, 0] });
+      if (ballSplit) {
+        // cut front/back at y=0 so the seam runs around the sides, not the face
+        const big = M.Manifold.cube([ballR * 4, ballR * 4, ballR * 4], true);
+        const front = ball.subtract(big.translate([0, -ballR * 2, 0])); // keep y >= 0 (the face)
+        const back = ball.subtract(big.translate([0, ballR * 2, 0])); // keep y <= 0
+        parts.push({ asm: front, printRot: [90, 0, 0] }); // cut-down, face up
+        parts.push({ asm: back, printRot: [-90, 0, 0] }); // cut-down, dome up
+      } else {
+        // whole ball: print flat-face-down (a small base; the lower dome may want
+        // light support — turn on 球對半分印 for a fully support-free print)
+        parts.push({ asm: ball, printRot: [-90, 0, 0] });
+      }
     }
 
     if (parts.length === 0) throw new Error("至少要勾選一個分件");
