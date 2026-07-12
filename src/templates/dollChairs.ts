@@ -55,13 +55,17 @@ export const dollHighChairTemplate: Template = {
     const backW = seatW;
     const seatBottomZ = seatH - st;
 
-    // --- leg joint: straight vertical pegs into through-holes in the seat pan.
-    // Each leg splays via its own bent shaft, so every hole prints clean. ---
-    const pegR = 3.6;
-    const pegInsert = st + 1; // peg reaches up flush with the seat top
-    const holeR = pegR + c;
+    // --- leg joint: a KEYED racetrack mortise-tenon. The flat-sided tenon can't
+    // rotate (splay stays put, seats square) and a chamfered lead-in mouth lets
+    // it self-centre and click home flush. Tenon is vertical, so holes print
+    // clean; the splay lives in each leg's bent shaft. ---
+    const legTenL = Math.min(11, seatW * 0.12); // radial length of the tenon
+    const legTenW = 5.2; // tangential width
+    const legTenRad = legTenW / 2;
+    const legTenInsert = st + 1;
     const jointX = Math.max(14, seatW / 2 - 20);
     const jointY = Math.max(12, seatD / 2 - 18);
+    const cornerAng = (sx: number, sy: number) => (Math.atan2(sy * jointY, sx * jointX) * 180) / Math.PI;
 
     // --- back tenon into a rear slot in the seat ---
     const tenonW = Math.min(seatW * 0.5, seatW - 22);
@@ -90,7 +94,14 @@ export const dollHighChairTemplate: Template = {
         rect(M, tenonW, tenonH, 0, -tenonH / 2), // downward tenon (in-plane)
       ]);
       backCS = backCS.subtract(ellipse(M, backW * 0.22, backH * 0.11, 0, backH * 0.2));
-      const flat = M.Manifold.extrude(backCS, t);
+      // raised inner-ear relief proud of the front face (the z=0 side -> +Y once
+      // stood up), for the pink-inner-ear look; welds into the panel
+      const innerEarCS = M.CrossSection.union([
+        rabbitEar(M, earW * 0.5, earH * 0.6, -earSp / 2, backH - 6 + earH * 0.16),
+        rabbitEar(M, earW * 0.5, earH * 0.6, earSp / 2, backH - 6 + earH * 0.16),
+      ]);
+      const relief = M.Manifold.extrude(innerEarCS, 1.6).translate([0, 0, -1.1]);
+      const flat = M.Manifold.union(M.Manifold.extrude(backCS, t), relief);
       // assembled: stand vertical at the rear, tenon dropping into the seat slot
       const asm = flat
         .rotate([90, 0, 0]) // +Y height -> +Z, thickness -> -Y, tenon -> below
@@ -101,14 +112,32 @@ export const dollHighChairTemplate: Template = {
     // ===================== Seat: pan + low walls + holes/slots =================
     if (bool(values, "incSeat")) {
       let panCS = rrect(M, seatW, seatD, 20);
-      // four leg through-holes
+      // four keyed racetrack mortises (oriented radially toward each corner)
       for (const sx of [-1, 1])
         for (const sy of [-1, 1]) {
-          panCS = panCS.subtract(M.CrossSection.circle(holeR, 24).translate(sx * jointX, sy * jointY));
+          const mortise = rrect(M, legTenL + 2 * c, legTenW + 2 * c, legTenRad + c)
+            .rotate(cornerAng(sx, sy))
+            .translate(sx * jointX, sy * jointY);
+          panCS = panCS.subtract(mortise);
         }
       // rear slot for the back tenon
       panCS = panCS.subtract(rect(M, tenonW + 2 * c, t + 2 * c, 0, slotY));
       let seat = M.Manifold.extrude(panCS, st).translate([0, 0, seatBottomZ]);
+
+      // gently dished sitting surface so the doll nestles
+      seat = seat.subtract(M.Manifold.sphere(120, 64).translate([0, 2, seatH + 120 - 3]));
+
+      // chamfered lead-in mouths on each mortise (self-centring, seats flush)
+      for (const sx of [-1, 1])
+        for (const sy of [-1, 1]) {
+          const csink = M.Manifold.extrude(
+            rrect(M, legTenL + 2 * c + 1.6, legTenW + 2 * c + 1.6, legTenRad + c + 0.8)
+              .rotate(cornerAng(sx, sy))
+              .translate(sx * jointX, sy * jointY),
+            2
+          ).translate([0, 0, seatH - 2]);
+          seat = seat.subtract(csink);
+        }
 
       // low hip side walls (rear ~62%, front open so the doll drops in)
       const wallLen = seatD * 0.62;
@@ -140,17 +169,18 @@ export const dollHighChairTemplate: Template = {
       const shaftH = seatBottomZ / Math.max(Math.cos(lean), 0.5);
       for (const sx of [-1, 1])
         for (const sy of [-1, 1]) {
-          // local frame: vertical peg up from origin; tapered shaft down & out +X
-          const peg = M.Manifold.cylinder(pegInsert, pegR, pegR, 20);
-          const shaft = M.Manifold.cylinder(shaftH, 5.2, 4.0, 24)
+          // local frame: vertical KEYED tenon up from origin (long axis +X, radial);
+          // tapered shaft down & out +X so the foot splays toward the corner
+          const tenon = M.Manifold.extrude(rrect(M, legTenL, legTenW, legTenRad), legTenInsert);
+          const shaft = M.Manifold.cylinder(shaftH, 5.4, 4.0, 32)
             .translate([0, 0, -shaftH]) // top at origin
             .rotate([0, -legSplayDeg, 0]); // lean so the foot swings +X
           const footX = shaftH * Math.sin(lean);
-          const foot = M.Manifold.sphere(4.4, 16).translate([footX, 0, -shaftH * Math.cos(lean)]);
-          const legLocal = M.Manifold.union([peg, shaft, foot]);
+          const foot = M.Manifold.sphere(4.4, 20).translate([footX, 0, -shaftH * Math.cos(lean)]);
+          const legLocal = M.Manifold.union([tenon, shaft, foot]);
 
-          // assembled: aim the +X lean toward this corner, peg into the seat hole
-          const cornerDeg = (Math.atan2(sy, sx) * 180) / Math.PI;
+          // assembled: aim the +X lean + tenon toward this corner, into the mortise
+          const cornerDeg = cornerAng(sx, sy);
           const asm = legLocal
             .rotate([0, 0, cornerDeg])
             .translate([sx * jointX, sy * jointY, seatBottomZ]);
