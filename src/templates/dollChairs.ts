@@ -19,7 +19,7 @@ export const dollHighChairTemplate: Template = {
     { kind: "number", key: "seatHeight", label: "座面高度(腳長)", min: 30, max: 100, step: 1, default: 62, unit: "mm" },
     { kind: "number", key: "backHeight", label: "背板高度(座面以上)", min: 45, max: 120, step: 1, default: 90, unit: "mm" },
     { kind: "number", key: "panelT", label: "板件厚度", min: 4, max: 9, step: 0.5, default: 6, unit: "mm" },
-    { kind: "number", key: "clearance", label: "卡榫餘裕(單邊,印太緊調大)", min: 0.1, max: 0.6, step: 0.05, default: 0.3, unit: "mm" },
+    { kind: "number", key: "clearance", label: "卡榫餘裕(單邊,緊配 0.1;太緊插不進就調大)", min: 0.05, max: 0.6, step: 0.05, default: 0.1, unit: "mm" },
     { kind: "number", key: "legSplay", label: "椅腳外撇角度", min: 0, max: 24, step: 1, default: 14, unit: "°" },
     { kind: "number", key: "earWidth", label: "兔耳寬度", min: 10, max: 34, step: 0.5, default: 22, unit: "mm", group: "耳朵造型" },
     { kind: "number", key: "earHeight", label: "兔耳長度", min: 16, max: 70, step: 1, default: 46, unit: "mm", group: "耳朵造型" },
