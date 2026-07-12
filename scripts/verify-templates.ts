@@ -53,6 +53,7 @@ run("charm-peg-panel", { ...paramsFor("charm-peg-panel"), enableConnectors: fals
 run("device-tray", { ...paramsFor("device-tray"), liftHeight: 0 });
 run("device-tray", { ...paramsFor("device-tray"), liftHeight: 40 });
 run("doll-high-chair", { ...paramsFor("doll-high-chair"), incLegs: false, incTray: false });
+run("doll-high-chair", { ...paramsFor("doll-high-chair"), incBack: false, incSeat: false });
 run("doll-high-chair", { ...paramsFor("doll-high-chair"), assembled: true });
 run("doll-swing", { ...paramsFor("doll-swing"), incArch: false, incFrames: false, incCaps: false });
 

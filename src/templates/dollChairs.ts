@@ -7,31 +7,26 @@ import { rrect, rect, ellipse, rabbitEar, trap, layoutParts } from "./geo";
  * 餐桌椅 Doll High Chair — 開放式椅殼,分件:椅殼(背板+座面)、四腳架、餐盤
  * =================================================================== */
 
-/** A part built directly in its ASSEMBLED pose (asm), plus the extra rotation
- * that lays it flat for printing (printRot). */
-interface ShellPart {
-  asm: Manifold;
-  printRot: [number, number, number];
-}
-
 export const dollHighChairTemplate: Template = {
   id: "doll-high-chair",
   name: "餐桌椅(兔耳開放椅殼・分件列印) Doll High Chair",
   description:
-    "娃娃用餐椅,參考市售兔耳款重做成「開放式椅殼」:娃娃直接從上方放進去坐(座面開放、低側牆)。三件分色分件列印,靠真正的插孔+插銷組裝:①椅殼(背板+兔耳+橢圓握把孔+座面,底部有四個中空插孔)②外撇四腳架(頂面四支插銷插進椅殼插孔)③前餐盤(兩側環扣扣在椅殼插銷上,可拆好讓娃娃先坐)。預設尺寸給長10×寬8cm的娃娃(座內寬約84mm)。打開「組裝預覽」看組好的樣子,關掉則自動排成一盤、可一次印好(已控制在 256 床內)。",
+    "娃娃用餐椅,參考市售兔耳款做成「開放式椅殼」:娃娃直接從上方放進去坐。為了『免支撐一次印好』全部拆成平放/直立的分件:①背板(兔耳+橢圓握把孔,底部榫頭)平躺印②座面(含低側牆,後方榫槽、四個插腳孔、前緣餐盤插銷)平放印③四支獨立圓錐插腳,各自直立印、外撇角度靠腳身彎折(免斜孔)④前餐盤(兩側環扣扣上座面插銷,可拆好讓娃娃先坐)。組裝:背板榫頭插入座面後槽→四支腳插入座面四孔→餐盤環扣套上。預設給長10×寬8cm的娃娃(座內寬約84mm)。打開「組裝預覽」看組好樣子,關掉則自動排成一盤(控制在 P2S 256 床內)。",
   params: [
     { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
     { kind: "number", key: "seatWidth", label: "座椅外寬", min: 60, max: 130, step: 1, default: 96, unit: "mm" },
     { kind: "number", key: "seatDepth", label: "座椅深度", min: 45, max: 110, step: 1, default: 76, unit: "mm" },
     { kind: "number", key: "seatHeight", label: "座面高度(腳長)", min: 30, max: 100, step: 1, default: 62, unit: "mm" },
     { kind: "number", key: "backHeight", label: "背板高度(座面以上)", min: 45, max: 120, step: 1, default: 90, unit: "mm" },
-    { kind: "number", key: "panelT", label: "殼體厚度", min: 4, max: 9, step: 0.5, default: 6, unit: "mm" },
+    { kind: "number", key: "panelT", label: "板件厚度", min: 4, max: 9, step: 0.5, default: 6, unit: "mm" },
     { kind: "number", key: "clearance", label: "卡榫餘裕(單邊,印太緊調大)", min: 0.1, max: 0.6, step: 0.05, default: 0.3, unit: "mm" },
+    { kind: "number", key: "legSplay", label: "椅腳外撇角度", min: 0, max: 24, step: 1, default: 14, unit: "°" },
     { kind: "number", key: "earWidth", label: "兔耳寬度", min: 10, max: 34, step: 0.5, default: 22, unit: "mm", group: "耳朵造型" },
     { kind: "number", key: "earHeight", label: "兔耳長度", min: 16, max: 70, step: 1, default: 46, unit: "mm", group: "耳朵造型" },
     { kind: "number", key: "earSpacing", label: "兔耳間距(中心距)", min: 14, max: 80, step: 1, default: 34, unit: "mm", group: "耳朵造型" },
-    { kind: "boolean", key: "incShell", label: "含椅殼(背板+座面)", default: true, group: "分件選擇" },
-    { kind: "boolean", key: "incLegs", label: "含四腳架", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incBack", label: "含背板(兔耳)", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incSeat", label: "含座面", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incLegs", label: "含四支椅腳", default: true, group: "分件選擇" },
     { kind: "boolean", key: "incTray", label: "含餐盤", default: true, group: "分件選擇" },
     { kind: "number", key: "trayDepth", label: "餐盤深度", min: 30, max: 80, step: 1, default: 52, unit: "mm", group: "進階" },
     { kind: "number", key: "trayRimHeight", label: "餐盤圍邊高度", min: 0, max: 8, step: 0.5, default: 5, unit: "mm", group: "進階" },
@@ -44,6 +39,7 @@ export const dollHighChairTemplate: Template = {
     const backH = num(values, "backHeight");
     const t = num(values, "panelT");
     const c = num(values, "clearance");
+    const legSplayDeg = num(values, "legSplay");
     const earW = num(values, "earWidth");
     const earH = num(values, "earHeight");
     const earSp = num(values, "earSpacing");
@@ -53,43 +49,72 @@ export const dollHighChairTemplate: Template = {
     const assembled = bool(values, "assembled");
 
     const DEG = Math.PI / 180;
-    const st = t;                              // seat slab thickness
-    const wall = t;                            // side-wall thickness
+    const st = t; // seat slab thickness
+    const wall = t; // side-wall thickness
     const sideWallH = Math.min(16, backH * 0.22);
     const backW = seatW;
     const seatBottomZ = seatH - st;
 
-    // --- leg joint: hollow sockets under the seat + matching pegs (shared vars
-    // so peg outer = socket bore - clearance and the parts always line up) ---
-    const boreR = 4.0;
-    const socketOuterR = boreR + 2.6;
-    const socketLen = Math.max(6, Math.min(13, seatBottomZ * 0.32));
-    const pegR = boreR - c;
-    const pegInsert = Math.max(4, socketLen - 2);
-    const socketBotZ = seatBottomZ - socketLen;
-    const jointX = Math.max(14, seatW / 2 - 24);
-    const jointY = Math.max(10, seatD / 2 - 22);
+    // --- leg joint: straight vertical pegs into through-holes in the seat pan.
+    // Each leg splays via its own bent shaft, so every hole prints clean. ---
+    const pegR = 3.6;
+    const pegInsert = st + 1; // peg reaches up flush with the seat top
+    const holeR = pegR + c;
+    const jointX = Math.max(14, seatW / 2 - 20);
+    const jointY = Math.max(12, seatD / 2 - 18);
 
-    // --- tray clip: pegs on the shell front sides + ring hooks on the tray ---
+    // --- back tenon into a rear slot in the seat ---
+    const tenonW = Math.min(seatW * 0.5, seatW - 22);
+    const tenonH = st + 6; // through the pan + 6mm
+    const slotY = -(seatD / 2 - 9);
+
+    // --- tray clip: forward pegs on the seat front sides + ring hooks on tray ---
     const clipPegR = 4;
     const clipZ = seatH + Math.min(8, sideWallH * 0.5);
     const clipY = seatD / 2 - 8;
 
-    const yokeT = 7;
-    const yokeTopZ = socketBotZ;
-    const yokeBotZ = yokeTopZ - yokeT;
+    const asmParts: Manifold[] = [];
+    const printParts: Manifold[] = [];
+    const add = (asm: Manifold, print: Manifold) => {
+      asmParts.push(asm);
+      printParts.push(print);
+    };
 
-    const parts: ShellPart[] = [];
+    // ===================== Back: flat panel + ears + bottom tenon ==============
+    if (bool(values, "incBack")) {
+      let backCS = rrect(M, backW, backH, 22, 0, backH / 2);
+      backCS = M.CrossSection.union([
+        backCS,
+        rabbitEar(M, earW, earH, -earSp / 2, backH - 6),
+        rabbitEar(M, earW, earH, earSp / 2, backH - 6),
+        rect(M, tenonW, tenonH, 0, -tenonH / 2), // downward tenon (in-plane)
+      ]);
+      backCS = backCS.subtract(ellipse(M, backW * 0.22, backH * 0.11, 0, backH * 0.2));
+      const flat = M.Manifold.extrude(backCS, t);
+      // assembled: stand vertical at the rear, tenon dropping into the seat slot
+      const asm = flat
+        .rotate([90, 0, 0]) // +Y height -> +Z, thickness -> -Y, tenon -> below
+        .translate([0, slotY + t / 2, seatH]);
+      add(asm, flat); // print lying on its back (support-free)
+    }
 
-    // ================= Shell: seat + low walls + back + ears + sockets =========
-    if (bool(values, "incShell")) {
-      let shell = M.Manifold.extrude(rrect(M, seatW, seatD, 20), st).translate([0, 0, seatBottomZ]);
+    // ===================== Seat: pan + low walls + holes/slots =================
+    if (bool(values, "incSeat")) {
+      let panCS = rrect(M, seatW, seatD, 20);
+      // four leg through-holes
+      for (const sx of [-1, 1])
+        for (const sy of [-1, 1]) {
+          panCS = panCS.subtract(M.CrossSection.circle(holeR, 24).translate(sx * jointX, sy * jointY));
+        }
+      // rear slot for the back tenon
+      panCS = panCS.subtract(rect(M, tenonW + 2 * c, t + 2 * c, 0, slotY));
+      let seat = M.Manifold.extrude(panCS, st).translate([0, 0, seatBottomZ]);
 
-      // low hip side walls (rear ~62%, front left open so the doll drops in)
+      // low hip side walls (rear ~62%, front open so the doll drops in)
       const wallLen = seatD * 0.62;
       for (const sx of [-1, 1]) {
-        shell = M.Manifold.union(
-          shell,
+        seat = M.Manifold.union(
+          seat,
           M.Manifold.cube([wall, wallLen, sideWallH], true).translate([
             sx * (seatW / 2 - wall / 2),
             -seatD / 2 + wallLen / 2 + 2,
@@ -97,84 +122,45 @@ export const dollHighChairTemplate: Template = {
           ])
         );
       }
-
-      // back panel with oval handle hole + rabbit ears (front face = +Y)
-      let backCS = rrect(M, backW, backH, 22, 0, backH / 2);
-      backCS = M.CrossSection.union([
-        backCS,
-        rabbitEar(M, earW, earH, -earSp / 2, backH - 6),
-        rabbitEar(M, earW, earH, earSp / 2, backH - 6),
-      ]);
-      backCS = backCS.subtract(ellipse(M, backW * 0.22, backH * 0.11, 0, backH * 0.2));
-      const back = M.Manifold.extrude(backCS, t)
-        .rotate([90, 0, 0]) // stand up: local +Y height -> +Z, thickness -> -Y
-        .translate([0, -seatD / 2 + t / 2 + 2, seatH]);
-      shell = M.Manifold.union(shell, back);
-
-      // lumbar wedge welding the seat rear to the back
-      shell = M.Manifold.union(
-        shell,
-        M.Manifold.cube([seatW - 2 * wall, 12, 12], true).translate([0, -seatD / 2 + 10, seatH + 5])
-      );
-
-      // four hollow leg sockets hanging under the seat
-      for (const sx of [-1, 1])
-        for (const sy of [-1, 1]) {
-          const tube = M.Manifold.cylinder(socketLen, socketOuterR, socketOuterR, 32)
-            .subtract(M.Manifold.cylinder(socketLen + 2, boreR, boreR, 32).translate([0, 0, -1]))
-            .translate([sx * jointX, sy * jointY, socketBotZ]);
-          shell = M.Manifold.union(shell, tube);
-        }
-
-      // two forward-pointing clip pegs the tray hooks slip onto
+      // forward clip pegs for the tray
       for (const sx of [-1, 1]) {
-        shell = M.Manifold.union(
-          shell,
+        seat = M.Manifold.union(
+          seat,
           M.Manifold.cylinder(9, clipPegR, clipPegR, 24)
-            .rotate([-90, 0, 0]) // axis -> +Y (points forward)
+            .rotate([-90, 0, 0]) // axis -> +Y
             .translate([sx * (seatW / 2 - 4), clipY, clipZ])
         );
       }
-
-      parts.push({ asm: shell, printRot: [-90, 0, 0] }); // lay on its back to print
+      add(seat, seat); // prints as-is: pan down, walls up (support-free)
     }
 
-    // ================= Legs: yoke + up-pegs + four splayed legs ================
+    // ===================== Legs: four independent bent peg-legs ================
     if (bool(values, "incLegs")) {
-      let legs = M.Manifold.extrude(rrect(M, seatW - 22, seatD - 22, 10), yokeT).translate([
-        0, 0, yokeBotZ,
-      ]);
-
+      const lean = legSplayDeg * DEG;
+      const shaftH = seatBottomZ / Math.max(Math.cos(lean), 0.5);
       for (const sx of [-1, 1])
         for (const sy of [-1, 1]) {
-          legs = M.Manifold.union(
-            legs,
-            M.Manifold.cylinder(pegInsert, pegR, pegR, 28).translate([sx * jointX, sy * jointY, yokeTopZ])
-          );
-        }
+          // local frame: vertical peg up from origin; tapered shaft down & out +X
+          const peg = M.Manifold.cylinder(pegInsert, pegR, pegR, 20);
+          const shaft = M.Manifold.cylinder(shaftH, 5.2, 4.0, 24)
+            .translate([0, 0, -shaftH]) // top at origin
+            .rotate([0, -legSplayDeg, 0]); // lean so the foot swings +X
+          const footX = shaftH * Math.sin(lean);
+          const foot = M.Manifold.sphere(4.4, 16).translate([footX, 0, -shaftH * Math.cos(lean)]);
+          const legLocal = M.Manifold.union([peg, shaft, foot]);
 
-      const splay = 12; // degrees
-      const lx = Math.max(16, seatW / 2 - 16);
-      const ly = Math.max(16, seatD / 2 - 16);
-      const legLen = yokeBotZ / Math.cos(splay * DEG);
-      const outMove = Math.sin(splay * DEG) * legLen;
-      for (const sx of [-1, 1])
-        for (const sy of [-1, 1]) {
-          const leg = M.Manifold.cylinder(legLen, 4.6, 6.2, 24)
-            .translate([0, 0, -legLen]) // top at origin
-            .rotate([-sy * splay, sx * splay, 0])
-            .translate([sx * lx, sy * ly, yokeBotZ]);
-          legs = M.Manifold.union(legs, leg);
-          legs = M.Manifold.union(
-            legs,
-            M.Manifold.sphere(4.8, 16).translate([sx * (lx + outMove), sy * (ly + outMove), 1.2])
-          );
+          // assembled: aim the +X lean toward this corner, peg into the seat hole
+          const cornerDeg = (Math.atan2(sy, sx) * 180) / Math.PI;
+          const asm = legLocal
+            .rotate([0, 0, cornerDeg])
+            .translate([sx * jointX, sy * jointY, seatBottomZ]);
+          // print: rotate the shaft back to vertical so it stands on its foot
+          const print = legLocal.rotate([0, legSplayDeg, 0]);
+          add(asm, print);
         }
-
-      parts.push({ asm: legs, printRot: [0, 0, 0] }); // print upright, feet on the bed
     }
 
-    // ================= Tray: rimmed plate + side arms with ring hooks ==========
+    // ===================== Tray: rimmed plate + ring-hook arms =================
     if (bool(values, "incTray")) {
       const trayW = seatW + 2;
       let tray = M.Manifold.extrude(rrect(M, trayW, trayD, 16), t);
@@ -182,9 +168,7 @@ export const dollHighChairTemplate: Template = {
         const rim = rrect(M, trayW, trayD, 16).subtract(rrect(M, trayW - 12, trayD - 12, 11));
         tray = M.Manifold.union(tray, M.Manifold.extrude(rim, t + trayRimH));
       }
-      // two arms reaching to the rear (-Y) ending in a ring hook whose hole faces
-      // +Y so it slides onto a shell clip peg
-      const armLen = Math.max(20, (trayD / 2) - clipY + (seatD / 2)); // reach to the pegs
+      const armLen = Math.max(20, trayD / 2 - clipY + seatD / 2);
       const armW = 10;
       for (const sx of [-1, 1]) {
         tray = M.Manifold.union(
@@ -204,22 +188,17 @@ export const dollHighChairTemplate: Template = {
         tray = M.Manifold.union(tray, ring);
       }
       const trayY = seatD / 2 + trayD / 2 - 4;
-      parts.push({ asm: tray.translate([0, trayY, clipZ - t / 2]), printRot: [0, 0, 0] });
+      add(tray.translate([0, trayY, clipZ - t / 2]), tray);
     }
 
-    if (parts.length === 0) throw new Error("至少要勾選一個分件");
+    if (asmParts.length === 0) throw new Error("至少要勾選一個分件");
 
     if (assembled) {
-      const all =
-        parts.length === 1 ? parts[0].asm : M.Manifold.union(parts.map((p) => p.asm));
+      const all = asmParts.length === 1 ? asmParts[0] : M.Manifold.union(asmParts);
       const b = all.boundingBox();
       return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
     }
-    return layoutParts(
-      M,
-      parts.map((p) => p.asm.rotate(p.printRot)),
-      gap
-    );
+    return layoutParts(M, printParts, gap);
   },
 };
 
