@@ -106,6 +106,31 @@ console.log("--- doll-high-chair assemblability (joint interference) ---");
   console.log(`[${engOk ? "OK" : "FAIL"}] leg engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >40)`);
 }
 
+console.log("--- spring-plush-ball assemblability (peg/socket interference) ---");
+{
+  const ball = templates.find((x) => x.id === "spring-plush-ball")!;
+  const base = defaultValues(ball.params);
+  const vol = (m: ReturnType<typeof ball.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    ball.build({ ...base, incBall: false, incSpring: false, incHandle: false, ...f, ...extra, assembled: true }, wasm);
+  const pair = (label: string, a: ParamValues, b: ParamValues) => {
+    const ov = vol(only(a)) + vol(only(b)) - vol(only({ ...a, ...b }));
+    const ok = ov < 40;
+    if (!ok) failures++;
+    console.log(`[${ok ? "OK" : "FAIL"}] ${label}: overlap=${ov.toFixed(1)}mm³`);
+  };
+  pair("ball+spring", { incBall: true }, { incSpring: true });
+  pair("handle+spring", { incHandle: true }, { incSpring: true });
+  const tight = { clearance: -0.6 };
+  const eng =
+    vol(only({ incBall: true }, tight)) +
+    vol(only({ incSpring: true }, tight)) -
+    vol(only({ incBall: true, incSpring: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] ball peg engagement @clr=-0.6: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

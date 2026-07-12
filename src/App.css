@@ -115,6 +115,16 @@
   gap: 8px;
 }
 
+.param-row__select {
+  width: 100%;
+  background: var(--bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 6px;
+  font-size: 13px;
+}
+
 .param-row__controls input[type="range"] {
   flex: 1;
 }

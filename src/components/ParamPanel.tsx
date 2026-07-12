@@ -29,6 +29,24 @@ function ParamRow({
       </label>
     );
   }
+  if (param.kind === "select") {
+    return (
+      <label className="param-row">
+        <span className="param-row__label">{param.label}</span>
+        <select
+          className="param-row__select"
+          value={values[param.key] as number}
+          onChange={(e) => onChange(param.key, Number(e.target.value))}
+        >
+          {param.options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
   const value = values[param.key] as number;
   return (
     <label className="param-row">

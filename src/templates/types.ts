@@ -24,7 +24,16 @@ export interface BooleanParamDef {
   group?: ParamGroup;
 }
 
-export type ParamDef = NumberParamDef | BooleanParamDef;
+export interface SelectParamDef {
+  kind: "select";
+  key: string;
+  label: string;
+  options: { label: string; value: number }[];
+  default: number;
+  group?: ParamGroup;
+}
+
+export type ParamDef = NumberParamDef | BooleanParamDef | SelectParamDef;
 
 export type ParamValues = Record<string, number | boolean>;
 
