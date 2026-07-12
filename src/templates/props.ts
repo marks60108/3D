@@ -8,6 +8,11 @@ import { layoutParts } from "./geo";
  * 圓球臉頭(小點眼 + 波浪鋸齒嘴)。參考原品絨毛玩具。
  * =================================================================== */
 
+// faces are built pointing +Y by default (addFace/ballHead); rotate the whole
+// prop about Z so the face reads as facing the viewer's left in the default
+// preview camera (see Viewport.tsx's camera position).
+const FACE_ROT_Z = -90;
+
 // a printed helical coil approximated by overlapping spheres along a helix
 function coil(
   M: ManifoldToplevel,
@@ -254,19 +259,19 @@ export const usagiMaceTemplate: Template = {
       front = front.subtract(headJoint.frontSocket);
       back = back.subtract(headJoint.backSocket);
 
-      return layoutParts(
+      // face-direction rotation (about Z) is safe to apply after everything
+      // else — it doesn't touch Z, so it can't un-flatten a cut-face-down part
+      const laidOut = layoutParts(
         M,
-        [
-          front.rotate([90, 0, 0]),
-          back.rotate([-90, 0, 0]),
-          handleJoint.dowel,
-          headJoint.dowel,
-        ],
+        [front.rotate([90, 0, 0]), back.rotate([-90, 0, 0]), handleJoint.dowel, headJoint.dowel],
         8
-      );
+      ).rotate([0, 0, FACE_ROT_Z]);
+      const lb = laidOut.boundingBox();
+      return laidOut.translate([-lb.min[0], -lb.min[1], -lb.min[2]]);
     }
-    const b = m.boundingBox();
-    return m.translate([0, 0, -b.min[2]]);
+    const whole = m.rotate([0, 0, FACE_ROT_Z]);
+    const b = whole.boundingBox();
+    return whole.translate([-b.min[0], -b.min[1], -b.min[2]]);
   },
 };
 
@@ -392,10 +397,18 @@ export const springPlushBallTemplate: Template = {
     if (parts.length === 0) throw new Error("至少要勾選一個分件");
 
     if (assembled) {
-      const all = parts.length === 1 ? parts[0].asm : M.Manifold.union(parts.map((p) => p.asm));
+      const all = (parts.length === 1 ? parts[0].asm : M.Manifold.union(parts.map((p) => p.asm))).rotate([
+        0, 0, FACE_ROT_Z,
+      ]);
       const b = all.boundingBox();
       return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
     }
-    return layoutParts(M, parts.map((p) => p.asm.rotate(p.printRot)), gap);
+    // face-direction rotation (about Z) is safe after layoutParts — it doesn't
+    // touch Z, so it can't un-flatten a cut-face-down/upright print part
+    const laidOut = layoutParts(M, parts.map((p) => p.asm.rotate(p.printRot)), gap).rotate([
+      0, 0, FACE_ROT_Z,
+    ]);
+    const lb = laidOut.boundingBox();
+    return laidOut.translate([-lb.min[0], -lb.min[1], -lb.min[2]]);
   },
 };
