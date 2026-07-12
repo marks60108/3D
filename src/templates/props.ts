@@ -99,6 +99,37 @@ function addFace(
   return m;
 }
 
+/** A registration joint for two y=0 split halves that both print cut-face-down.
+ * A peg spanning the seam would have to poke past y=0 on BOTH sides — which,
+ * once each half is rotated flat for printing, puts that material below the
+ * build plate (unprintable). So instead: drill a blind socket into EACH half's
+ * own territory only (front: y=0..+depth; back: y=0..-depth — both subtractive,
+ * so always print-safe), and bridge the two sockets after assembly with a
+ * separate free-standing dowel pin (a plain cylinder — trivially support-free).
+ * Returns the two sockets (to subtract) and the dowel (to print alongside). */
+function seamDowelJoint(
+  M: ManifoldToplevel,
+  zPos: number,
+  avail: number,
+  clearance: number
+): { frontSocket: Manifold; backSocket: Manifold; dowel: Manifold } {
+  const holeR = Math.max(0.7, Math.min(1.3, avail * 0.4));
+  const depth = 4;
+  const mkSocket = (mirror: boolean) => {
+    let s = M.Manifold.cylinder(depth + 0.5, holeR, holeR, 24)
+      .translate([0, 0, -0.5])
+      .rotate([90, 0, 0]) // axis -> Y, reaching from y=0 into y<0
+      .translate([0, 0, zPos]);
+    if (mirror) s = s.mirror([0, 1, 0]); // flip to reach into y>0 instead
+    return s;
+  };
+  const dowelLen = depth * 2 - 1.5; // slightly short so the seam still closes flush
+  const dowel = M.Manifold.cylinder(dowelLen, holeR - clearance, holeR - clearance, 24);
+  // mkSocket(false) reaches mostly into y<0 — that's a deep hole for BACK's own
+  // territory, so it's assigned to backSocket (and mirrored for frontSocket)
+  return { frontSocket: mkSocket(true), backSocket: mkSocket(false), dowel };
+}
+
 /** A ball head with a shallow flat front face (keeps it looking round). */
 function ballHead(M: ManifoldToplevel, headR: number, headCz: number): { head: Manifold; faceY: number } {
   const faceY = headR * 0.8;
@@ -117,7 +148,7 @@ export const usagiMaceTemplate: Template = {
   id: "usagi-mace",
   name: "烏薩奇臉權杖(娃娃道具) Usagi Face Mace",
   description:
-    "吉伊卡哇烏薩奇的長柄武器:圓球白臉頭(兩個小點眼 + 波浪鋸齒嘴)—一段彈簧—細長握柄。預設 ~9cm 給娃娃拿。『彈簧樣式』可選:①硬螺旋(一體成型、耐用、不會彈)②留孔塞真彈簧(頭與柄分開、各留 φ5.6 孔,你塞一根真彈簧,頭會晃、最像原品)③可動 PLA 螺旋(直接印會微彈、較細脆)。臉建議朝上平躺印最清晰。想要 40mm 大球 + 120mm 長柄的完整組裝版,請改用『彈簧毛絨球(組裝件)』。",
+    "吉伊卡哇烏薩奇的長柄武器:圓球白臉頭(兩個小點眼 + 波浪鋸齒嘴)—一段彈簧—細長握柄。預設 ~9cm 給娃娃拿。『彈簧樣式』可選:①免支撐螺紋柱(實心・免支撐・耐用,預設)②硬螺旋(需支撐)③留孔塞真彈簧(頭與柄分開、各留 φ5.6 孔,你塞一根真彈簧,頭會晃、最像原品)④可動 PLA 螺旋(直接印會微彈、較細脆)。臉建議朝上平躺印最清晰。開「整支對半分印」可完全免支撐:整支前後對切,兩半各自平切面貼床(含臉那半臉朝上);握柄跟頭部各留一對盲孔(兩半各自的孔都不會互穿、保證印起來安全),另外印 2 支小圓柱定位榫釘——組裝時把榫釘插入一半的孔對齊,壓上另一半再上膠,比純黏合牢固。想要 40mm 大球 + 120mm 長柄的完整組裝版,請改用『彈簧毛絨球(組裝件)』。",
   category: "storage-display",
   params: [
     {
@@ -139,12 +170,14 @@ export const usagiMaceTemplate: Template = {
     { kind: "number", key: "eyeR", label: "眼睛大小", min: 0.8, max: 3, step: 0.1, default: 1.5, unit: "mm", group: "臉部微調" },
     { kind: "number", key: "eyeSpacing", label: "眼距(中心)", min: 3, max: 16, step: 0.5, default: 7, unit: "mm", group: "臉部微調" },
     { kind: "number", key: "mouthWidth", label: "嘴巴寬度", min: 5, max: 26, step: 0.5, default: 13, unit: "mm", group: "臉部微調" },
-    { kind: "boolean", key: "splitPrint", label: "整支對半分印(完全免支撐)", default: false, group: "選項" },
+    { kind: "boolean", key: "splitPrint", label: "整支對半分印(完全免支撐,含2支定位榫釘)", default: false, group: "選項" },
+    { kind: "number", key: "seamClearance", label: "榫釘餘裕(單邊)", min: 0.05, max: 0.4, step: 0.05, default: 0.15, unit: "mm", group: "選項" },
     { kind: "boolean", key: "keychainLoop", label: "頂端鑰匙圈吊孔", default: false, group: "選項" },
   ],
   build: (values: ParamValues, M) => {
     const style = num(values, "springStyle");
     const splitPrint = bool(values, "splitPrint");
+    const seamClr = num(values, "seamClearance");
     const headR = num(values, "headDia") / 2;
     const handleLen = num(values, "handleLen");
     const r = num(values, "handleDia") / 2;
@@ -205,9 +238,32 @@ export const usagiMaceTemplate: Template = {
       // (the face half comes out face-up), so nothing overhangs
       const R = headR + handleLen;
       const big = M.Manifold.cube([R * 4, R * 4, R * 4], true);
-      const front = m.subtract(big.translate([0, -R * 2, 0])).rotate([90, 0, 0]);
-      const back = m.subtract(big.translate([0, R * 2, 0])).rotate([-90, 0, 0]);
-      return layoutParts(M, [front, back], 8);
+      let front = m.subtract(big.translate([0, -R * 2, 0]));
+      let back = m.subtract(big.translate([0, R * 2, 0]));
+
+      // two registration joints so the halves index and grip, not just glue:
+      // one in the handle, one in the head. Each is a blind socket in BOTH
+      // halves (always print-safe) bridged by a separate dowel pin after
+      // assembly — see seamDowelJoint for why an integral crossing peg can't
+      // be printed cut-face-down.
+      const handleJoint = seamDowelJoint(M, handleLen * 0.5, r, seamClr);
+      front = front.subtract(handleJoint.frontSocket);
+      back = back.subtract(handleJoint.backSocket);
+
+      const headJoint = seamDowelJoint(M, headCz, headR, seamClr);
+      front = front.subtract(headJoint.frontSocket);
+      back = back.subtract(headJoint.backSocket);
+
+      return layoutParts(
+        M,
+        [
+          front.rotate([90, 0, 0]),
+          back.rotate([-90, 0, 0]),
+          handleJoint.dowel,
+          headJoint.dowel,
+        ],
+        8
+      );
     }
     const b = m.boundingBox();
     return m.translate([0, 0, -b.min[2]]);
