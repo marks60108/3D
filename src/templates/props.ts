@@ -12,6 +12,9 @@ import { layoutParts } from "./geo";
 // prop about Z so the face reads as facing the viewer's left in the default
 // preview camera (see Viewport.tsx's camera position).
 const FACE_ROT_Z = -90;
+// spin the eyes+mouth pattern within the flat face plane so, once the prop is
+// stood upright, the eyes read on the right and the mouth on the left.
+const FACE_PATTERN_ROT_Y = -90;
 
 // a printed helical coil approximated by overlapping spheres along a helix
 function coil(
@@ -55,7 +58,12 @@ function ribbedSpindle(
 }
 
 /** Add the Usagi face (two dot eyes + wavy zigzag mouth) onto a flat front face
- * at y = faceY, centred at z = headCz. Returns the combined manifold. */
+ * at y = faceY, centred at z = headCz. The eyes+mouth pattern is built in a
+ * local frame (z relative to headCz=0) and rotated by `patternRotY` degrees
+ * around the Y axis (the face's outward normal) before being placed — this
+ * spins the pattern within the flat face plane without touching how far it
+ * pokes out (Y), so eyes-top/mouth-bottom can become eyes-right/mouth-left
+ * etc. without needing to re-derive any coordinates by hand. */
 function addFace(
   M: ManifoldToplevel,
   base: Manifold,
@@ -64,17 +72,15 @@ function addFace(
   headCz: number,
   eyeR: number,
   eyeSp: number,
-  mouthW: number
+  mouthW: number,
+  patternRotY = 0
 ): Manifold {
-  let m = base;
-  const eyeZ = headCz + headR * 0.26;
+  let features: Manifold[] = [];
+  const eyeZ = headR * 0.26; // local, relative to headCz=0
   for (const sx of [-1, 1]) {
-    m = M.Manifold.union(
-      m,
-      M.Manifold.sphere(eyeR, 32).scale([1, 0.7, 1]).translate([sx * eyeSp / 2, faceY, eyeZ])
-    );
+    features.push(M.Manifold.sphere(eyeR, 32).scale([1, 0.7, 1]).translate([sx * eyeSp / 2, faceY, eyeZ]));
   }
-  const mouthZ = headCz - headR * 0.1;
+  const mouthZ = -headR * 0.1; // local
   const amp = mouthW * 0.13;
   const folds = 4;
   const pts: [number, number][] = [];
@@ -88,20 +94,18 @@ function addFace(
     const [x2, z2] = pts[i + 1];
     const len = Math.hypot(x2 - x1, z2 - z1);
     const angDeg = (Math.atan2(-(z2 - z1), x2 - x1) * 180) / Math.PI;
-    m = M.Manifold.union(
-      m,
+    features.push(
       M.Manifold.cube([len, proud + 1, stroke], true)
         .rotate([0, angDeg, 0])
         .translate([(x1 + x2) / 2, faceY + (proud + 1) / 2 - 1, mouthZ + (z1 + z2) / 2])
     );
   }
   for (const [px, pz] of pts) {
-    m = M.Manifold.union(
-      m,
-      M.Manifold.sphere(stroke * 0.6, 20).scale([1, 0.7, 1]).translate([px, faceY, mouthZ + pz])
-    );
+    features.push(M.Manifold.sphere(stroke * 0.6, 20).scale([1, 0.7, 1]).translate([px, faceY, mouthZ + pz]));
   }
-  return m;
+  let featureGroup = M.Manifold.union(features);
+  if (patternRotY !== 0) featureGroup = featureGroup.rotate([0, patternRotY, 0]);
+  return M.Manifold.union(base, featureGroup.translate([0, 0, headCz]));
 }
 
 /** A registration joint for two y=0 split halves that both print cut-face-down.
@@ -228,7 +232,7 @@ export const usagiMaceTemplate: Template = {
       );
     }
     m = M.Manifold.union(m, head);
-    m = addFace(M, m, headR, faceY, headCz, eyeR, eyeSp, mouthW);
+    m = addFace(M, m, headR, faceY, headCz, eyeR, eyeSp, mouthW, FACE_PATTERN_ROT_Y);
 
     if (loop) {
       const ring = M.Manifold.cylinder(3, 5, 5, 40)
@@ -379,7 +383,7 @@ export const springPlushBallTemplate: Template = {
         // peg down into the top socket, extending 3mm up into the sphere to fuse
         M.Manifold.cylinder(pegLen + 3, pegR, pegR, 32).translate([0, 0, ballBottomZ - pegLen])
       );
-      ball = addFace(M, ball, ballR, faceY, ballCz, eyeR, eyeSp, mouthW);
+      ball = addFace(M, ball, ballR, faceY, ballCz, eyeR, eyeSp, mouthW, FACE_PATTERN_ROT_Y);
       if (ballSplit) {
         // cut front/back at y=0 so the seam runs around the sides, not the face
         const big = M.Manifold.cube([ballR * 4, ballR * 4, ballR * 4], true);
