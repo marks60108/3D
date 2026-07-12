@@ -82702,18 +82702,17 @@ function setAssembled() {
 function setPrint() {
   doll.visible = false;
 
-  // shell laid on its BACK (back panel down, seat + ears splay up-forward):
-  // rotate +90° about X so the rear face rests on the bed, front/pink faces up
-  shell.rotation.set(Math.PI / 2, 0, 0);
-  shell.position.set(-140, D.backT, 40);
+  // Compact single-plate layout that fits the Bambu P2S 256×256 bed so the whole
+  // set prints in one job. Shell laid on its BACK and turned 90° so its long axis
+  // runs along X (top row); legs + tray share the bottom row.
+  shell.rotation.set(Math.PI / 2, 0, Math.PI / 2);
+  shell.position.set(125, D.backT, 35);   // top row, long axis along X, centred
 
-  // legs frame: natural orientation (feet on the bed), moved aside
   legs.rotation.set(0, 0, 0);
-  legs.position.set(150, 0, -20);
+  legs.position.set(-55, 0, -72);         // bottom-left
 
-  // tray laid flat, rim up
   tray.rotation.set(-Math.PI / 2, 0, 0);
-  tray.position.set(15, D.trayT, -120);
+  tray.position.set(45, D.trayT, -56);    // bottom-right
 
   controls.target.set(0, 0, -20);
   frameCamera(460);
@@ -82767,6 +82766,17 @@ resize();
   renderer.render(scene, camera);
 })();
 
+// test/export hooks (harmless in production)
+window.__model = model;
+window.__THREE = THREE;
+window.__exportStl = () => {
+  const prev = mode;
+  mode = "print";
+  apply();
+  const out = new STLExporter().parse(model, { binary: true });
+  if (prev !== "print") { mode = prev; apply(); }
+  return out;
+};
 window.__ready = true;
 
 </script>
