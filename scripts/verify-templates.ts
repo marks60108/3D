@@ -131,6 +131,44 @@ console.log("--- spring-plush-ball assemblability (peg/socket interference) ---"
   console.log(`[${engOk ? "OK" : "FAIL"}] ball peg engagement @clr=-0.6: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
 }
 
+console.log("--- mini-bed assemblability (joint interference) ---");
+{
+  const bed = templates.find((x) => x.id === "mini-bed")!;
+  const base = defaultValues(bed.params);
+  const vol = (m: ReturnType<typeof bed.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    bed.build(
+      {
+        ...base,
+        incPlatform: false,
+        incLegs: false,
+        incHeadboard: false,
+        incFootboard: false,
+        ...f,
+        ...extra,
+        assembled: true,
+      },
+      wasm
+    );
+  const pair = (label: string, a: ParamValues, b: ParamValues) => {
+    const ov = vol(only(a)) + vol(only(b)) - vol(only({ ...a, ...b }));
+    const ok = ov < 30;
+    if (!ok) failures++;
+    console.log(`[${ok ? "OK" : "FAIL"}] ${label}: overlap=${ov.toFixed(1)}mm³`);
+  };
+  pair("platform+legs", { incPlatform: true }, { incLegs: true });
+  pair("platform+headboard", { incPlatform: true }, { incHeadboard: true });
+  pair("platform+footboard", { incPlatform: true }, { incFootboard: true });
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incPlatform: true }, tight)) +
+    vol(only({ incLegs: true }, tight)) -
+    vol(only({ incPlatform: true, incLegs: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] leg peg engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);
