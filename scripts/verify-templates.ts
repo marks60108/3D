@@ -340,6 +340,30 @@ console.log("--- mini-ladder assemblability (joint interference) ---");
   console.log(`[${engOk ? "OK" : "FAIL"}] mid-shelf engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
 }
 
+console.log("--- mini-wall-shelf assemblability (joint interference) ---");
+{
+  const wshelf = templates.find((x) => x.id === "mini-wall-shelf")!;
+  const base = defaultValues(wshelf.params);
+  const vol = (m: ReturnType<typeof wshelf.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    wshelf.build({ ...base, incBackplate: false, incShelf: false, ...f, ...extra, assembled: true }, wasm);
+  const ov =
+    vol(only({ incBackplate: true })) +
+    vol(only({ incShelf: true })) -
+    vol(only({ incBackplate: true, incShelf: true }));
+  const ok = ov < 30;
+  if (!ok) failures++;
+  console.log(`[${ok ? "OK" : "FAIL"}] backplate+shelf: overlap=${ov.toFixed(1)}mm³`);
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incBackplate: true }, tight)) +
+    vol(only({ incShelf: true }, tight)) -
+    vol(only({ incBackplate: true, incShelf: true }, tight));
+  const engOk = eng > 20;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] peg engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >20)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

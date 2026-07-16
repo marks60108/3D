@@ -934,3 +934,134 @@ export const miniLadderTemplate: Template = {
     return layoutParts(M, printParts, gap);
   },
 };
+
+/* =====================================================================
+ * 迷你壁掛層板 Mini Wall Shelf — 沿用 hook 模板的壁掛鎖孔背板,加兩支水平
+ * 方形鍵榫插銷;層板背緣對應兩個插孔,從上掛下去卡上插銷。這是給「牆面
+ * 場景」用的迷你展示層板(鎖真實牆壁),不是娃娃屋內部家具。
+ * =================================================================== */
+
+export const miniWallShelfTemplate: Template = {
+  id: "mini-wall-shelf",
+  name: "迷你壁掛層板(原創北歐簡約風) Mini Wall Shelf",
+  description:
+    "原創設計的迷你壁掛展示層板,無角色/無版權疑慮,可商用販售。背板含兩個鎖孔(鎖真實牆壁用,跟壁掛掛勾模板同一套規格)+ 兩支水平方形鍵榫插銷;層板背緣對應兩個插孔,從上掛下去卡上插銷,前緣有微凸圍邊防止小物滑落。適合放小公仔、多肉盆栽等輕量小物。打開「組裝預覽」看組好樣子,關掉排成一盤列印,全部平放、免支撐。",
+  category: "storage-display",
+  params: [
+    { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
+    { kind: "number", key: "backW", label: "背板寬度", min: 40, max: 120, step: 1, default: 70, unit: "mm" },
+    { kind: "number", key: "backH", label: "背板高度", min: 20, max: 60, step: 1, default: 32, unit: "mm" },
+    { kind: "number", key: "backT", label: "背板厚度", min: 3, max: 8, step: 0.5, default: 5, unit: "mm" },
+    { kind: "number", key: "shelfDepth", label: "層板深度", min: 25, max: 80, step: 1, default: 45, unit: "mm" },
+    { kind: "number", key: "shelfT", label: "層板厚度", min: 3, max: 8, step: 0.5, default: 5, unit: "mm" },
+    { kind: "number", key: "holeDiameter", label: "壁掛鎖孔直徑", min: 2, max: 8, step: 0.1, default: 4.2, unit: "mm" },
+    { kind: "number", key: "clearance", label: "鍵榫餘裕(單邊,緊配0.1;太緊插不進就調大)", min: 0.05, max: 0.4, step: 0.05, default: 0.1, unit: "mm" },
+    { kind: "boolean", key: "incBackplate", label: "含壁掛背板", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incShelf", label: "含層板", default: true, group: "分件選擇" },
+    { kind: "number", key: "layoutGap", label: "分件排版間距", min: 3, max: 30, step: 1, default: 8, unit: "mm", group: "進階" },
+  ],
+  build: (values: ParamValues, M) => {
+    const backW = num(values, "backW");
+    const backH = num(values, "backH");
+    const backT = num(values, "backT");
+    const shelfDepth = num(values, "shelfDepth");
+    const shelfT = num(values, "shelfT");
+    const holeR = num(values, "holeDiameter") / 2;
+    const c = num(values, "clearance");
+    const gap = num(values, "layoutGap");
+    const assembled = bool(values, "assembled");
+
+    // two keyed pegs project forward off the backplate; the shelf's back
+    // edge carries matching blind sockets and simply hangs on them (a
+    // clearance-fit bracket joint, same square-keyed-peg family used for
+    // every leg/tenon in this line — no friction fit, fully audit-verifiable)
+    // capped by shelfT-1.5 so the socket cut into the shelf stays a
+    // contained blind pocket instead of breaching clean through its top and
+    // bottom face (the peg is a cantilever bracket, not a through-tenon)
+    const pegSide = Math.max(2.5, Math.min(shelfT - 1.5, backW * 0.06 + 3.5));
+    const pegLen = Math.max(4, backT - 1);
+    const pegSpacing = backW * 0.28;
+    const pegZ = backH * 0.62;
+
+    const asmParts: Manifold[] = [];
+    const printParts: Manifold[] = [];
+    const add = (asm: Manifold, print: Manifold) => {
+      asmParts.push(asm);
+      printParts.push(print);
+    };
+
+    // ===================== Wall backplate =====================
+    if (bool(values, "incBackplate")) {
+      // local (pre-rotation) frame — same convention as every headboard/
+      // back-panel in this file: X=width, Y=height (0..backH via the
+      // cy=backH/2 shift), Z=thickness (0..backT). Screw holes are cut as
+      // 2D circles in the cross-section (a clean through-hole along Z needs
+      // no separate 3D cylinder subtraction this way).
+      let cs = rrect(M, backW, backH, 6, 0, backH / 2);
+      for (const hx of [-pegSpacing, pegSpacing]) {
+        cs = cs.subtract(M.CrossSection.circle(holeR, 24).translate(hx, backH * 0.82));
+      }
+      let flat = M.Manifold.extrude(cs, backT);
+
+      // two outward-projecting keyed pegs — "outward" in this local frame
+      // is plain +Z (the extrusion's own natural direction), so no extra
+      // rotation is needed for the pegs themselves, only for the final
+      // stand-up rotation applied to the whole panel below
+      for (const px of [-pegSpacing, pegSpacing]) {
+        const peg = M.Manifold.extrude(rect(M, pegSide, pegSide), pegLen).translate([px, pegZ, backT - 0.5]);
+        flat = M.Manifold.union(flat, peg);
+      }
+
+      // stand it upright with the same rotate([90,0,0]) used for every
+      // headboard/back-panel in this file: height maps straight to world Z,
+      // thickness maps to world Y with "outward" ending up NEGATIVE — the
+      // shelf below is placed to match this same negative-Y convention
+      const asm = flat.rotate([90, 0, 0]);
+      add(asm, flat);
+    }
+
+    // ===================== Shelf =====================
+    if (bool(values, "incShelf")) {
+      let shelf = M.Manifold.extrude(rrect(M, backW * 0.92, shelfDepth, 8), shelfT);
+
+      // low front rail so small props don't roll off the outer edge — the
+      // "outer" (away from wall) side is NEGATIVE local Y here, to match
+      // the backplate's own negative-Y "outward" convention after its
+      // rotation above; the socket-bearing "back" (near-wall) edge is
+      // therefore the POSITIVE Y side
+      const railW = 4;
+      shelf = M.Manifold.union(
+        shelf,
+        M.Manifold.cube([backW * 0.92 - 6, railW, 3], true).translate([
+          0,
+          -(shelfDepth / 2 - railW / 2 - 1),
+          shelfT + 1.5,
+        ])
+      );
+
+      // blind sockets at the back (+Y) edge, matching the backplate's pegs.
+      // The cutter is Z-extruded (its own natural axis) then rotated -90°
+      // about X so it projects along Y instead — needed here because,
+      // unlike the backplate, the shelf itself is never rotated, so "into
+      // the shelf from its back edge" is the shelf's own Y axis, not Z.
+      for (const px of [-pegSpacing, pegSpacing]) {
+        const sock = M.Manifold.extrude(rect(M, pegSide + 2 * c, pegSide + 2 * c), pegLen + 0.3)
+          .rotate([-90, 0, 0])
+          .translate([px, shelfDepth / 2 - pegLen - 0.1, shelfT / 2]);
+        shelf = shelf.subtract(sock);
+      }
+
+      const asm = shelf.translate([0, -backT - shelfDepth / 2, pegZ - shelfT / 2]);
+      add(asm, shelf);
+    }
+
+    if (asmParts.length === 0) throw new Error("至少要勾選一個分件");
+
+    if (assembled) {
+      const all = asmParts.length === 1 ? asmParts[0] : M.Manifold.union(asmParts);
+      const b = all.boundingBox();
+      return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
+    }
+    return layoutParts(M, printParts, gap);
+  },
+};
