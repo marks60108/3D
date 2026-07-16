@@ -311,6 +311,35 @@ console.log("--- mini-mirror assemblability (joint interference) ---");
   console.log(`[${engOk ? "OK" : "FAIL"}] tenon engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
 }
 
+console.log("--- mini-ladder assemblability (joint interference) ---");
+{
+  const ladder = templates.find((x) => x.id === "mini-ladder")!;
+  const base = defaultValues(ladder.params);
+  const vol = (m: ReturnType<typeof ladder.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    ladder.build(
+      { ...base, incBase: false, incMid: false, incTop: false, incSides: false, ...f, ...extra, assembled: true },
+      wasm
+    );
+  const pair = (label: string, a: ParamValues, b: ParamValues) => {
+    const ov = vol(only(a)) + vol(only(b)) - vol(only({ ...a, ...b }));
+    const ok = ov < 30;
+    if (!ok) failures++;
+    console.log(`[${ok ? "OK" : "FAIL"}] ${label}: overlap=${ov.toFixed(1)}mm³`);
+  };
+  pair("base+sides", { incBase: true }, { incSides: true });
+  pair("mid+sides", { incMid: true }, { incSides: true });
+  pair("top+sides", { incTop: true }, { incSides: true });
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incMid: true }, tight)) +
+    vol(only({ incSides: true }, tight)) -
+    vol(only({ incMid: true, incSides: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] mid-shelf engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

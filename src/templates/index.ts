@@ -20,6 +20,7 @@ import {
   miniChairTemplate,
   miniWardrobeTemplate,
   miniMirrorTemplate,
+  miniLadderTemplate,
 } from "./miniFurniture";
 
 /** Category assigned per template id (kept here so template files stay focused
@@ -44,6 +45,7 @@ const CATEGORY_BY_ID: Record<string, TemplateCategory> = {
   "mini-chair": "storage-display",
   "mini-wardrobe": "storage-display",
   "mini-mirror": "storage-display",
+  "mini-ladder": "storage-display",
   hook: "storage-display",
   bracket: "generic",
   tube: "generic",
@@ -69,6 +71,7 @@ export const templates: Template[] = [
   miniChairTemplate,
   miniWardrobeTemplate,
   miniMirrorTemplate,
+  miniLadderTemplate,
   hookTemplate,
   bracketTemplate,
   tubeTemplate,

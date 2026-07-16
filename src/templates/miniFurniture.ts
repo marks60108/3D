@@ -807,3 +807,130 @@ export const miniMirrorTemplate: Template = {
     return layoutParts(M, printParts, gap);
   },
 };
+
+/* =====================================================================
+ * 迷你邊桌(三層階梯架) Mini Doll Side Table — mini-shelf 的側板卡榫模組
+ * 延伸成三層(底/中/頂),四面開放無背板,像縮小版的階梯書架邊桌。
+ * =================================================================== */
+
+export const miniLadderTemplate: Template = {
+  id: "mini-ladder",
+  name: "迷你邊桌(原創北歐簡約風) Mini Doll Side Table",
+  description:
+    "原創設計的娃娃迷你邊桌,無角色/無版權疑慮,可商用販售。跟迷你收納櫃同一套側板卡榫模組,延伸成三層階梯架(底層+中層+頂層,兩側板各三道長榫),四面開放無背板,適合放小道具或當床邊桌。打開「組裝預覽」看組好樣子,關掉排成一盤列印,全部平放/直立、免支撐。",
+  category: "storage-display",
+  params: [
+    { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
+    { kind: "number", key: "ldrW", label: "架體寬度", min: 40, max: 130, step: 1, default: 60, unit: "mm" },
+    { kind: "number", key: "ldrD", label: "架體深度", min: 25, max: 80, step: 1, default: 38, unit: "mm" },
+    { kind: "number", key: "ldrH", label: "架體總高度", min: 50, max: 160, step: 1, default: 78, unit: "mm" },
+    { kind: "number", key: "midFrac", label: "中層高度位置(0=底 1=頂)", min: 0.3, max: 0.7, step: 0.05, default: 0.5 },
+    { kind: "number", key: "wallT", label: "板件厚度", min: 3, max: 8, step: 0.5, default: 5, unit: "mm" },
+    { kind: "number", key: "clearance", label: "鍵榫餘裕(單邊,緊配0.1;太緊插不進就調大)", min: 0.05, max: 0.4, step: 0.05, default: 0.1, unit: "mm" },
+    { kind: "boolean", key: "incBase", label: "含底層", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incMid", label: "含中層", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incTop", label: "含頂層", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incSides", label: "含左右側板 x2", default: true, group: "分件選擇" },
+    { kind: "number", key: "layoutGap", label: "分件排版間距", min: 3, max: 30, step: 1, default: 8, unit: "mm", group: "進階" },
+  ],
+  build: (values: ParamValues, M) => {
+    const ldrW = num(values, "ldrW");
+    const ldrD = num(values, "ldrD");
+    const ldrH = num(values, "ldrH");
+    const midFrac = num(values, "midFrac");
+    const wallT = num(values, "wallT");
+    const c = num(values, "clearance");
+    const gap = num(values, "layoutGap");
+    const assembled = bool(values, "assembled");
+
+    const baseTopZ = wallT;
+    const topZ = Math.max(baseTopZ + 20, ldrH - wallT);
+    const midZ = baseTopZ + (topZ - baseTopZ) * midFrac;
+    const tenonReach = Math.max(2.5, wallT - 1.5);
+    const tenonLen = Math.max(10, ldrD * 0.55);
+
+    const asmParts: Manifold[] = [];
+    const printParts: Manifold[] = [];
+    const add = (asm: Manifold, print: Manifold) => {
+      asmParts.push(asm);
+      printParts.push(print);
+    };
+
+    const margin = 0.3;
+    // one shared shelf slab builder: rrect plate at a given world-Z, with
+    // side-tenon sockets cut for its OWN slab thickness range — same
+    // unconditional-on-mating-part convention used throughout this file.
+    // `sockLen` is the socket's world-Y (depth) extent: base/top only meet a
+    // narrow protruding TAB at the wall's end (tenonLen wide), but the middle
+    // shelf meets the wall's full continuous cross-section (ldrD-4 wide) —
+    // passing the wrong (narrower) width there left the wall's front/back
+    // edges colliding with solid shelf material outside the socket, caught
+    // by the joint-interference audit as a 539mm³ overlap.
+    const cutSideSockets = (slab: Manifold, tenonZMin: number, tenonZMax: number, sockLen: number): Manifold => {
+      let s = slab;
+      const h = tenonZMax - tenonZMin + 2 * margin;
+      for (const sx of [-1, 1]) {
+        const sock = M.Manifold.extrude(rect(M, wallT + 2 * c, sockLen + 2 * c), h).translate([
+          sx * (ldrW / 2 - wallT / 2),
+          0,
+          tenonZMin - margin,
+        ]);
+        s = s.subtract(sock);
+      }
+      return s;
+    };
+
+    // ===================== Base =====================
+    if (bool(values, "incBase")) {
+      let base = M.Manifold.extrude(rrect(M, ldrW, ldrD, 8), wallT);
+      base = cutSideSockets(base, baseTopZ - tenonReach, baseTopZ, tenonLen);
+      add(base, base);
+    }
+
+    // ===================== Middle shelf =====================
+    if (bool(values, "incMid")) {
+      let mid = M.Manifold.extrude(rrect(M, ldrW, ldrD, 8), wallT).translate([0, 0, midZ - wallT / 2]);
+      mid = cutSideSockets(mid, midZ - wallT / 2, midZ + wallT / 2, ldrD - 4);
+      add(mid, mid);
+    }
+
+    // ===================== Top =====================
+    if (bool(values, "incTop")) {
+      let top = M.Manifold.extrude(rrect(M, ldrW, ldrD, 8), wallT).translate([0, 0, topZ]);
+      top = cutSideSockets(top, topZ, topZ + tenonReach, tenonLen);
+      add(top, top);
+    }
+
+    // ===================== Side walls x2 (three tenons: base/mid/top) =====
+    if (bool(values, "incSides")) {
+      for (const sx of [-1, 1]) {
+        // local frame identical to mini-shelf's side walls: X = depth, Y =
+        // height, Z = thickness (centred on 0) — composed via
+        // rotate([90,0,0]).rotate([0,0,90]) => world (x,y,z) = local (z,x,y)
+        // the wall body already spans continuously from base to top, so the
+        // middle shelf doesn't need its own protruding tenon tab — its socket
+        // (cut below) engages the wall's own continuous cross-section directly,
+        // a plain housing/dado joint. Only the base/top ends need tabs, since
+        // those are where the wall body itself terminates.
+        let cs = rrect(M, ldrD - 4, topZ - baseTopZ, 5, 0, (topZ - baseTopZ) / 2 + baseTopZ);
+        cs = M.CrossSection.union([
+          cs,
+          rect(M, tenonLen, tenonReach, 0, baseTopZ - tenonReach / 2),
+          rect(M, tenonLen, tenonReach, 0, topZ + tenonReach / 2),
+        ]);
+        const flat = M.Manifold.extrude(cs, wallT).translate([0, 0, -wallT / 2]);
+        const asm = flat.rotate([90, 0, 0]).rotate([0, 0, 90]).translate([sx * (ldrW / 2 - wallT / 2), 0, 0]);
+        add(asm, flat);
+      }
+    }
+
+    if (asmParts.length === 0) throw new Error("至少要勾選一個分件");
+
+    if (assembled) {
+      const all = asmParts.length === 1 ? asmParts[0] : M.Manifold.union(asmParts);
+      const b = all.boundingBox();
+      return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
+    }
+    return layoutParts(M, printParts, gap);
+  },
+};
