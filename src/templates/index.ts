@@ -13,7 +13,13 @@ import { deviceTrayTemplate } from "./deviceTray";
 import { charmPegPanelTemplate } from "./charmPegPanel";
 import { dollHighChairTemplate, dollSwingTemplate } from "./dollChairs";
 import { usagiMaceTemplate, springPlushBallTemplate } from "./props";
-import { miniBedTemplate, miniTableTemplate, miniShelfTemplate, miniChairTemplate } from "./miniFurniture";
+import {
+  miniBedTemplate,
+  miniTableTemplate,
+  miniShelfTemplate,
+  miniChairTemplate,
+  miniWardrobeTemplate,
+} from "./miniFurniture";
 
 /** Category assigned per template id (kept here so template files stay focused
  * on geometry). */
@@ -35,6 +41,7 @@ const CATEGORY_BY_ID: Record<string, TemplateCategory> = {
   "mini-table": "storage-display",
   "mini-shelf": "storage-display",
   "mini-chair": "storage-display",
+  "mini-wardrobe": "storage-display",
   hook: "storage-display",
   bracket: "generic",
   tube: "generic",
@@ -58,6 +65,7 @@ export const templates: Template[] = [
   miniTableTemplate,
   miniShelfTemplate,
   miniChairTemplate,
+  miniWardrobeTemplate,
   hookTemplate,
   bracketTemplate,
   tubeTemplate,

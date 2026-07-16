@@ -252,6 +252,43 @@ console.log("--- mini-chair assemblability (joint interference) ---");
   console.log(`[${backEngOk ? "OK" : "FAIL"}] back tenon engagement @clr=-0.5: overlap=${backTight.toFixed(1)}mm³ (must be >30)`);
 }
 
+console.log("--- mini-wardrobe assemblability (joint interference) ---");
+{
+  const ward = templates.find((x) => x.id === "mini-wardrobe")!;
+  const base = defaultValues(ward.params);
+  const vol = (m: ReturnType<typeof ward.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    ward.build(
+      { ...base, incBase: false, incSides: false, incTop: false, incBack: false, incRod: false, ...f, ...extra, assembled: true },
+      wasm
+    );
+  const pair = (label: string, a: ParamValues, b: ParamValues) => {
+    const ov = vol(only(a)) + vol(only(b)) - vol(only({ ...a, ...b }));
+    const ok = ov < 30;
+    if (!ok) failures++;
+    console.log(`[${ok ? "OK" : "FAIL"}] ${label}: overlap=${ov.toFixed(1)}mm³`);
+  };
+  pair("base+sides", { incBase: true }, { incSides: true });
+  pair("top+sides", { incTop: true }, { incSides: true });
+  pair("base+back", { incBase: true }, { incBack: true });
+  pair("sides+rod", { incSides: true }, { incRod: true });
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incBase: true }, tight)) +
+    vol(only({ incSides: true }, tight)) -
+    vol(only({ incBase: true, incSides: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] side tenon engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+  const rodEng =
+    vol(only({ incSides: true }, tight)) +
+    vol(only({ incRod: true }, tight)) -
+    vol(only({ incSides: true, incRod: true }, tight));
+  const rodEngOk = rodEng > 5;
+  if (!rodEngOk) failures++;
+  console.log(`[${rodEngOk ? "OK" : "FAIL"}] rod peg engagement @clr=-0.5: overlap=${rodEng.toFixed(1)}mm³ (must be >5)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

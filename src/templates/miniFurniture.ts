@@ -527,3 +527,194 @@ export const miniShelfTemplate: Template = {
     return layoutParts(M, printParts, gap);
   },
 };
+
+/* =====================================================================
+ * 迷你衣櫃 Mini Doll Wardrobe — mini-shelf 櫃體(底/側/頂/背)放大加高,
+ * 加一支掛衣圓桿(兩端插進側板)。跟收納櫃一樣是開放式(無門片):摩擦卡榫
+ * 門片需要的「恰到好處的過盈量」得靠實機列印試裝校正,無法只靠幾何布林
+ * 驗證掛保證,所以先不做——之後真的要做門片,建議先印一版側板實測抓
+ * 出你這台印表機實際可靠的過盈公差,再回頭加。
+ * =================================================================== */
+
+export const miniWardrobeTemplate: Template = {
+  id: "mini-wardrobe",
+  name: "迷你衣櫃(原創北歐簡約風) Mini Doll Wardrobe",
+  description:
+    "原創設計的娃娃迷你衣櫃,無角色/無版權疑慮,可商用販售。跟迷你收納櫃同一套榫接櫃體(底板+左右側板+頂板+背板),加高加一支掛衣圓桿(兩端插進側板);開放式無門片設計(結構最穩固、跟收納櫃同一套邏輯)。打開「組裝預覽」看組好樣子,關掉排成一盤列印,全部平放/直立、免支撐。",
+  category: "storage-display",
+  params: [
+    { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
+    { kind: "number", key: "wardW", label: "櫃體寬度", min: 60, max: 160, step: 1, default: 100, unit: "mm" },
+    { kind: "number", key: "wardD", label: "櫃體深度", min: 30, max: 90, step: 1, default: 46, unit: "mm" },
+    { kind: "number", key: "wardH", label: "櫃體總高度", min: 60, max: 220, step: 1, default: 130, unit: "mm" },
+    { kind: "number", key: "wallT", label: "板件厚度", min: 3, max: 8, step: 0.5, default: 5, unit: "mm" },
+    { kind: "number", key: "rodDrop", label: "掛桿距頂板深度", min: 10, max: 40, step: 1, default: 18, unit: "mm" },
+    { kind: "number", key: "clearance", label: "鍵榫餘裕(單邊,緊配0.1;太緊插不進就調大)", min: 0.05, max: 0.4, step: 0.05, default: 0.1, unit: "mm" },
+    { kind: "boolean", key: "incBase", label: "含底板", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incSides", label: "含左右側板 x2", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incTop", label: "含頂板", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incBack", label: "含背板", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incRod", label: "含掛衣桿", default: true, group: "分件選擇" },
+    { kind: "number", key: "cutoutR", label: "背板裝飾圓孔大小", min: 2, max: 10, step: 0.5, default: 5, unit: "mm", group: "裝飾" },
+    { kind: "number", key: "layoutGap", label: "分件排版間距", min: 3, max: 30, step: 1, default: 8, unit: "mm", group: "進階" },
+  ],
+  build: (values: ParamValues, M) => {
+    const wardW = num(values, "wardW");
+    const wardD = num(values, "wardD");
+    const wardH = num(values, "wardH");
+    const wallT = num(values, "wallT");
+    const rodDrop = num(values, "rodDrop");
+    const c = num(values, "clearance");
+    const cutoutR = num(values, "cutoutR");
+    const gap = num(values, "layoutGap");
+    const assembled = bool(values, "assembled");
+
+    const baseTopZ = wallT;
+    const wallBodyH = Math.max(30, wardH - 2 * wallT);
+    const wallTopZ = baseTopZ + wallBodyH;
+    const tenonReach = Math.max(2.5, wallT - 1.5);
+    const tenonLen = Math.max(10, wardD * 0.5);
+
+    const backTenonW = Math.min(wardW * 0.6, wardW - 12);
+    const backTenonH = wallT + 3;
+    const backSlotY = wardD / 2 - 5;
+
+    // hanging rod: round dowel spanning the two side walls near the top.
+    // A rod doesn't need anti-rotation the way a leg/tenon does, so a plain
+    // round peg-into-round-hole is the right joint here (unlike the keyed
+    // square pegs used everywhere else in this furniture line).
+    const rodR = 2.2;
+    const rodPegR = 1.8;
+    const rodPegDepth = Math.max(2.5, wallT - 1.5);
+    const rodZ = wallTopZ - rodDrop;
+    const rodSpan = wardW - 2 * wallT;
+
+    const asmParts: Manifold[] = [];
+    const printParts: Manifold[] = [];
+    const add = (asm: Manifold, print: Manifold) => {
+      asmParts.push(asm);
+      printParts.push(print);
+    };
+
+    const margin = 0.3;
+    const cutSideSockets = (slab: Manifold, tenonZMin: number, tenonZMax: number): Manifold => {
+      let s = slab;
+      const h = tenonZMax - tenonZMin + 2 * margin;
+      for (const sx of [-1, 1]) {
+        const sock = M.Manifold.extrude(rect(M, wallT + 2 * c, tenonLen + 2 * c), h).translate([
+          sx * (wardW / 2 - wallT / 2),
+          0,
+          tenonZMin - margin,
+        ]);
+        s = s.subtract(sock);
+      }
+      return s;
+    };
+    const cutBackSocket = (slab: Manifold, tenonZMin: number, tenonZMax: number): Manifold => {
+      const h = tenonZMax - tenonZMin + 2 * margin;
+      const sock = M.Manifold.extrude(rect(M, backTenonW + 2 * c, wallT + 2 * c), h).translate([
+        0,
+        backSlotY,
+        tenonZMin - margin,
+      ]);
+      return slab.subtract(sock);
+    };
+
+    // ===================== Base =====================
+    if (bool(values, "incBase")) {
+      let base = M.Manifold.extrude(rrect(M, wardW, wardD, 8), wallT);
+      base = cutSideSockets(base, baseTopZ - tenonReach, baseTopZ);
+      base = cutBackSocket(base, baseTopZ - backTenonH, baseTopZ);
+      add(base, base);
+    }
+
+    // ===================== Top =====================
+    if (bool(values, "incTop")) {
+      let top = M.Manifold.extrude(rrect(M, wardW, wardD, 8), wallT).translate([0, 0, wallTopZ]);
+      top = cutSideSockets(top, wallTopZ, wallTopZ + tenonReach);
+      add(top, top);
+    }
+
+    // ===================== Side walls x2 (+ rod socket) =====================
+    if (bool(values, "incSides")) {
+      for (const sx of [-1, 1]) {
+        // local frame (pre-rotation): X = depth-extent, Y = height, Z =
+        // thickness (centred on 0 by the -wallT/2 shift below) — same
+        // convention as mini-shelf's side walls, composed via
+        // rotate([90,0,0]).rotate([0,0,90]) => world (x,y,z) = local (z,x,y)
+        let cs = rrect(M, wardD - 4, wallBodyH, 6, 0, wallBodyH / 2);
+        cs = M.CrossSection.union([
+          cs,
+          rect(M, tenonLen, tenonReach, 0, -tenonReach / 2),
+          rect(M, tenonLen, tenonReach, 0, wallBodyH + tenonReach / 2),
+        ]);
+        let flat = M.Manifold.extrude(cs, wallT).translate([0, 0, -wallT / 2]);
+
+        // rod socket: a blind hole drilled straight along local Z (the
+        // panel's own thickness axis — a bare, un-rotated cylinder already
+        // points this way, no extra rotation needed). Depth-centred (local
+        // X=0) and at the rod's world height (local Y = rodZ - baseTopZ).
+        // Inner face is local Z=-wallT/2 for the +X wall and Z=+wallT/2 for
+        // the -X wall (derived from the same composed-rotation world_x
+        // formula used for the leg/tenon sockets above), so the hole must
+        // start from whichever face faces inward and bore toward the outer
+        // face without breaking through it.
+        const rodLocalY = rodZ - baseTopZ;
+        const zStart = sx > 0 ? -wallT / 2 - 0.3 : wallT / 2 - rodPegDepth;
+        flat = flat.subtract(
+          M.Manifold.cylinder(rodPegDepth + 0.3, rodPegR + c, rodPegR + c, 24).translate([0, rodLocalY, zStart])
+        );
+
+        const asm = flat
+          .rotate([90, 0, 0])
+          .rotate([0, 0, 90])
+          .translate([sx * (wardW / 2 - wallT / 2), 0, baseTopZ]);
+        add(asm, flat);
+      }
+    }
+
+    // ===================== Back panel =====================
+    if (bool(values, "incBack")) {
+      const backH = wallBodyH;
+      const bodyR = Math.min(backH * 0.35, wardW * 0.4);
+      let cs = rrect(M, wardW - 4, backH, bodyR, 0, backH / 2);
+      cs = M.CrossSection.union([cs, rect(M, backTenonW, backTenonH, 0, -backTenonH / 2)]);
+      const holeSp = (wardW - 4) * 0.26;
+      for (const hx of [-holeSp, 0, holeSp]) {
+        cs = cs.subtract(M.CrossSection.circle(cutoutR, 28).translate(hx, backH * 0.72));
+      }
+      const flat = M.Manifold.extrude(cs, wallT);
+      const asm = flat.rotate([90, 0, 0]).translate([0, backSlotY + wallT / 2, baseTopZ]);
+      add(asm, flat);
+    }
+
+    // ===================== Hanging rod =====================
+    if (bool(values, "incRod")) {
+      // build along local Z first (Manifold's natural cylinder axis), centred,
+      // then reuse the SAME verified composed rotation as the side walls
+      // (rotate([90,0,0]).rotate([0,0,90]) => world (x,y,z) = local (z,x,y))
+      // so a Z-spanning cylinder becomes an X-spanning rod — this avoids
+      // introducing any new, unverified rotation axis.
+      const body = M.Manifold.cylinder(rodSpan, rodR, rodR, 24).translate([0, 0, -rodSpan / 2]);
+      const pegNeg = M.Manifold.cylinder(rodPegDepth, rodPegR, rodPegR, 24).translate([
+        0,
+        0,
+        -rodSpan / 2 - rodPegDepth,
+      ]);
+      const pegPos = M.Manifold.cylinder(rodPegDepth, rodPegR, rodPegR, 24).translate([0, 0, rodSpan / 2]);
+      const rod = M.Manifold.union([body, pegNeg, pegPos]);
+      const asm = rod.rotate([90, 0, 0]).rotate([0, 0, 90]).translate([0, 0, rodZ]);
+      // prints lying flat on its own cylindrical side — stable, no supports needed
+      add(asm, rod);
+    }
+
+    if (asmParts.length === 0) throw new Error("至少要勾選一個分件");
+
+    if (assembled) {
+      const all = asmParts.length === 1 ? asmParts[0] : M.Manifold.union(asmParts);
+      const b = all.boundingBox();
+      return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
+    }
+    return layoutParts(M, printParts, gap);
+  },
+};
