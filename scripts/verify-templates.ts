@@ -169,6 +169,57 @@ console.log("--- mini-bed assemblability (joint interference) ---");
   console.log(`[${engOk ? "OK" : "FAIL"}] leg peg engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
 }
 
+console.log("--- mini-table assemblability (joint interference) ---");
+{
+  const table = templates.find((x) => x.id === "mini-table")!;
+  const base = defaultValues(table.params);
+  const vol = (m: ReturnType<typeof table.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    table.build({ ...base, incTop: false, incLegs: false, ...f, ...extra, assembled: true }, wasm);
+  const ov = vol(only({ incTop: true })) + vol(only({ incLegs: true })) - vol(only({ incTop: true, incLegs: true }));
+  const ok = ov < 30;
+  if (!ok) failures++;
+  console.log(`[${ok ? "OK" : "FAIL"}] top+legs: overlap=${ov.toFixed(1)}mm³`);
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incTop: true }, tight)) +
+    vol(only({ incLegs: true }, tight)) -
+    vol(only({ incTop: true, incLegs: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] leg peg engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+}
+
+console.log("--- mini-shelf assemblability (joint interference) ---");
+{
+  const shelf = templates.find((x) => x.id === "mini-shelf")!;
+  const base = defaultValues(shelf.params);
+  const vol = (m: ReturnType<typeof shelf.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    shelf.build(
+      { ...base, incBase: false, incSides: false, incTop: false, incBack: false, ...f, ...extra, assembled: true },
+      wasm
+    );
+  const pair = (label: string, a: ParamValues, b: ParamValues) => {
+    const ov = vol(only(a)) + vol(only(b)) - vol(only({ ...a, ...b }));
+    const ok = ov < 30;
+    if (!ok) failures++;
+    console.log(`[${ok ? "OK" : "FAIL"}] ${label}: overlap=${ov.toFixed(1)}mm³`);
+  };
+  pair("base+sides", { incBase: true }, { incSides: true });
+  pair("top+sides", { incTop: true }, { incSides: true });
+  pair("base+back", { incBase: true }, { incBack: true });
+  pair("base+top", { incBase: true }, { incTop: true }); // sit far apart in Z, sanity check
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incBase: true }, tight)) +
+    vol(only({ incSides: true }, tight)) -
+    vol(only({ incBase: true, incSides: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] side tenon engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);

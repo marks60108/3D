@@ -13,7 +13,7 @@ import { deviceTrayTemplate } from "./deviceTray";
 import { charmPegPanelTemplate } from "./charmPegPanel";
 import { dollHighChairTemplate, dollSwingTemplate } from "./dollChairs";
 import { usagiMaceTemplate, springPlushBallTemplate } from "./props";
-import { miniBedTemplate } from "./miniFurniture";
+import { miniBedTemplate, miniTableTemplate, miniShelfTemplate } from "./miniFurniture";
 
 /** Category assigned per template id (kept here so template files stay focused
  * on geometry). */
@@ -32,6 +32,8 @@ const CATEGORY_BY_ID: Record<string, TemplateCategory> = {
   "usagi-mace": "storage-display",
   "spring-plush-ball": "storage-display",
   "mini-bed": "storage-display",
+  "mini-table": "storage-display",
+  "mini-shelf": "storage-display",
   hook: "storage-display",
   bracket: "generic",
   tube: "generic",
@@ -52,6 +54,8 @@ export const templates: Template[] = [
   usagiMaceTemplate,
   springPlushBallTemplate,
   miniBedTemplate,
+  miniTableTemplate,
+  miniShelfTemplate,
   hookTemplate,
   bracketTemplate,
   tubeTemplate,
