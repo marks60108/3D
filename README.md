@@ -4,7 +4,7 @@
 
 **線上使用**:https://marks60108.github.io/3D/(不用安裝任何東西,瀏覽器打開就能用)
 
-開發過程的里程碑與每次抓到的真實錯誤見 [CHANGELOG.md](CHANGELOG.md);每個模板的設計細節與稽核紀錄見 [docs/DESIGN-REVIEW.md](docs/DESIGN-REVIEW.md)。
+開發過程的里程碑與每次抓到的真實錯誤見 [CHANGELOG.md](CHANGELOG.md);每個模板的設計細節與稽核紀錄見 [docs/DESIGN-REVIEW.md](docs/DESIGN-REVIEW.md)。原創迷你家具系列的上市規劃書(品牌定位、成本試算、包裝、通路、法遵、90 天路線圖)見 [docs/BUSINESS-PLAN.html](docs/BUSINESS-PLAN.html)。
 
 ## 開發
 
