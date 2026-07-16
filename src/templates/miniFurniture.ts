@@ -718,3 +718,92 @@ export const miniWardrobeTemplate: Template = {
     return layoutParts(M, printParts, gap);
   },
 };
+
+/* =====================================================================
+ * 迷你穿衣鏡框 Mini Doll Mirror Frame — 圓角外框(挖窗)+插榫底座,跟床頭
+ * 板插進平台槽的接法完全同一套公式(旋轉後厚度帶固定是[-t,0])。「鏡面」
+ * 本身不列印(FDM 印不出鏡面),窗口是空的,使用者自己貼一張亮面卡片或
+ * 反光貼紙上去——這是配件應用步驟,不是這個零件本身的組裝方式,底座
+ * 插榫依然全部免膠。
+ * =================================================================== */
+
+export const miniMirrorTemplate: Template = {
+  id: "mini-mirror",
+  name: "迷你穿衣鏡框(原創北歐簡約風) Mini Doll Mirror Frame",
+  description:
+    "原創設計的娃娃迷你穿衣鏡框,無角色/無版權疑慮,可商用販售。圓角外框中間挖一個窗(FDM 印不出鏡面,窗口本身是空的,使用者自己貼亮面卡片或反光貼紙當鏡面),底部方形鍵榫插進底座槽(免膠),跟迷你床頭板同一套接合語言。打開「組裝預覽」看組好樣子,關掉排成一盤列印,全部平放、免支撐。",
+  category: "storage-display",
+  params: [
+    { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
+    { kind: "number", key: "frameW", label: "外框寬度", min: 30, max: 90, step: 1, default: 52, unit: "mm" },
+    { kind: "number", key: "frameH", label: "外框高度", min: 40, max: 120, step: 1, default: 72, unit: "mm" },
+    { kind: "number", key: "frameT", label: "外框厚度", min: 3, max: 8, step: 0.5, default: 5, unit: "mm" },
+    { kind: "number", key: "border", label: "窗框邊寬", min: 4, max: 16, step: 0.5, default: 7, unit: "mm" },
+    { kind: "number", key: "baseW", label: "底座寬度", min: 24, max: 70, step: 1, default: 40, unit: "mm" },
+    { kind: "number", key: "baseD", label: "底座深度", min: 18, max: 45, step: 1, default: 26, unit: "mm" },
+    { kind: "number", key: "baseT", label: "底座厚度", min: 3, max: 8, step: 0.5, default: 5, unit: "mm" },
+    { kind: "number", key: "clearance", label: "鍵榫餘裕(單邊,緊配0.1;太緊插不進就調大)", min: 0.05, max: 0.4, step: 0.05, default: 0.1, unit: "mm" },
+    { kind: "boolean", key: "incFrame", label: "含鏡框", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incBase", label: "含底座", default: true, group: "分件選擇" },
+    { kind: "number", key: "layoutGap", label: "分件排版間距", min: 3, max: 30, step: 1, default: 8, unit: "mm", group: "進階" },
+  ],
+  build: (values: ParamValues, M) => {
+    const frameW = num(values, "frameW");
+    const frameH = num(values, "frameH");
+    const frameT = num(values, "frameT");
+    const border = num(values, "border");
+    const baseW = num(values, "baseW");
+    const baseD = num(values, "baseD");
+    const baseT = num(values, "baseT");
+    const c = num(values, "clearance");
+    const gap = num(values, "layoutGap");
+    const assembled = bool(values, "assembled");
+
+    // frame bottom tenon into the base slot — identical convention to the
+    // bed's headboard-into-platform joint: the post-rotation thickness band
+    // is always [-t,0] regardless of which part it is, so translateY is
+    // always slotY + t/2
+    const tenonW = Math.min(frameW * 0.5, frameW - 14);
+    const tenonH = frameT + 4;
+    const slotY = baseD / 2 - 5;
+
+    const asmParts: Manifold[] = [];
+    const printParts: Manifold[] = [];
+    const add = (asm: Manifold, print: Manifold) => {
+      asmParts.push(asm);
+      printParts.push(print);
+    };
+
+    // ===================== Frame =====================
+    if (bool(values, "incFrame")) {
+      const bodyR = Math.min(frameW * 0.22, frameH * 0.14);
+      let cs = rrect(M, frameW, frameH, bodyR, 0, frameH / 2);
+      cs = M.CrossSection.union([cs, rect(M, tenonW, tenonH, 0, -tenonH / 2)]);
+      const winW = Math.max(6, frameW - 2 * border);
+      const winH = Math.max(8, frameH - 2 * border - 4);
+      const winR = Math.min(bodyR * 0.7, winW * 0.2, winH * 0.2);
+      cs = cs.subtract(rrect(M, winW, winH, winR, 0, frameH / 2 + 2));
+      const flat = M.Manifold.extrude(cs, frameT);
+      const asm = flat.rotate([90, 0, 0]).translate([0, slotY + frameT / 2, baseT]);
+      add(asm, flat);
+    }
+
+    // ===================== Base =====================
+    if (bool(values, "incBase")) {
+      let base = M.Manifold.extrude(rrect(M, baseW, baseD, 6), baseT);
+      base = base.subtract(
+        M.Manifold.extrude(rect(M, tenonW + 2 * c, frameT + 2 * c), baseT + 1).translate([0, slotY, -0.5])
+      );
+      add(base, base);
+    }
+
+    if (asmParts.length === 0) throw new Error("至少要勾選一個分件");
+
+    if (assembled) {
+      const all = asmParts.length === 1 ? asmParts[0] : M.Manifold.union(asmParts);
+      const b = all.boundingBox();
+      return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
+    }
+    return layoutParts(M, printParts, gap);
+  },
+};

@@ -289,6 +289,28 @@ console.log("--- mini-wardrobe assemblability (joint interference) ---");
   console.log(`[${rodEngOk ? "OK" : "FAIL"}] rod peg engagement @clr=-0.5: overlap=${rodEng.toFixed(1)}mm³ (must be >5)`);
 }
 
+console.log("--- mini-mirror assemblability (joint interference) ---");
+{
+  const mirror = templates.find((x) => x.id === "mini-mirror")!;
+  const base = defaultValues(mirror.params);
+  const vol = (m: ReturnType<typeof mirror.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    mirror.build({ ...base, incFrame: false, incBase: false, ...f, ...extra, assembled: true }, wasm);
+  const ov =
+    vol(only({ incFrame: true })) + vol(only({ incBase: true })) - vol(only({ incFrame: true, incBase: true }));
+  const ok = ov < 30;
+  if (!ok) failures++;
+  console.log(`[${ok ? "OK" : "FAIL"}] frame+base: overlap=${ov.toFixed(1)}mm³`);
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incFrame: true }, tight)) +
+    vol(only({ incBase: true }, tight)) -
+    vol(only({ incFrame: true, incBase: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] tenon engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);
