@@ -255,6 +255,127 @@ export const miniTableTemplate: Template = {
 };
 
 /* =====================================================================
+ * 原創迷你椅 Mini Doll Chair — 座面 + 靠背 + 四支錐形腳,跟床/桌/櫃同一套
+ * 鍵榫語言(不含耳朵/角色元素),補齊「房間四件組」。
+ * =================================================================== */
+
+export const miniChairTemplate: Template = {
+  id: "mini-chair",
+  name: "迷你椅(原創北歐簡約風) Mini Doll Chair",
+  description:
+    "原創設計的娃娃迷你椅,無角色/無版權疑慮,可商用販售。圓角座面 + 三孔裝飾靠背(榫頭插進座面後緣的槽)+ 四支簡約錐形腳(方形鍵榫插進座面底部插孔),跟迷你床/桌/收納櫃同一套接合語言與裝飾語彙,適合湊成房間四件組販售。打開「組裝預覽」看組好樣子,關掉排成一盤列印,全部平放/直立、免支撐。",
+  category: "storage-display",
+  params: [
+    { kind: "boolean", key: "assembled", label: "組裝預覽(關=列印排版)", default: false },
+    { kind: "number", key: "seatW", label: "座面寬度", min: 40, max: 110, step: 1, default: 70, unit: "mm" },
+    { kind: "number", key: "seatD", label: "座面深度", min: 40, max: 100, step: 1, default: 62, unit: "mm" },
+    { kind: "number", key: "legH", label: "椅腳高度", min: 15, max: 60, step: 1, default: 34, unit: "mm" },
+    { kind: "number", key: "backH", label: "靠背高度(座面以上)", min: 20, max: 90, step: 1, default: 50, unit: "mm" },
+    { kind: "number", key: "panelT", label: "板件厚度", min: 4, max: 9, step: 0.5, default: 6, unit: "mm" },
+    { kind: "number", key: "clearance", label: "鍵榫餘裕(單邊,緊配0.1;太緊插不進就調大)", min: 0.05, max: 0.4, step: 0.05, default: 0.1, unit: "mm" },
+    { kind: "boolean", key: "incSeat", label: "含座面", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incLegs", label: "含四支椅腳", default: true, group: "分件選擇" },
+    { kind: "boolean", key: "incBack", label: "含靠背", default: true, group: "分件選擇" },
+    { kind: "number", key: "cutoutR", label: "靠背裝飾圓孔大小", min: 2, max: 12, step: 0.5, default: 6, unit: "mm", group: "裝飾" },
+    { kind: "number", key: "layoutGap", label: "分件排版間距", min: 3, max: 30, step: 1, default: 8, unit: "mm", group: "進階" },
+  ],
+  build: (values: ParamValues, M) => {
+    const seatW = num(values, "seatW");
+    const seatD = num(values, "seatD");
+    const legH = num(values, "legH");
+    const backH = num(values, "backH");
+    const t = num(values, "panelT");
+    const c = num(values, "clearance");
+    const cutoutR = num(values, "cutoutR");
+    const gap = num(values, "layoutGap");
+    const assembled = bool(values, "assembled");
+
+    const seatBotZ = legH;
+    const seatTopZ = legH + t;
+
+    // leg joint: same keyed square peg system as mini-bed/mini-table
+    const pegSide = Math.min(8, Math.min(seatW, seatD) * 0.08 + 4);
+    const pegInsert = Math.max(3, t - 1.5);
+    const jointX = Math.max(8, seatW / 2 - 10);
+    // extra margin (vs. the table's -10) keeps the rear leg sockets well clear
+    // of the backrest tenon slot band near the rear edge — same principle
+    // proven in doll-high-chair's seat/back layout
+    const jointY = Math.max(12, seatD / 2 - 18);
+
+    // backrest tenon slot: a through-cut near the rear edge, same convention
+    // as the bed's headboard-into-platform joint
+    const tenonW = Math.min(seatW * 0.6, seatW - 14);
+    const tenonH = t + 4;
+    const backSlotY = seatD / 2 - 6;
+
+    const asmParts: Manifold[] = [];
+    const printParts: Manifold[] = [];
+    const add = (asm: Manifold, print: Manifold) => {
+      asmParts.push(asm);
+      printParts.push(print);
+    };
+
+    // ===================== Seat =====================
+    if (bool(values, "incSeat")) {
+      let seat = M.Manifold.extrude(rrect(M, seatW, seatD, 10), t).translate([0, 0, seatBotZ]);
+      for (const sx of [-1, 1])
+        for (const sy of [-1, 1]) {
+          const sock = M.Manifold.extrude(rect(M, pegSide + 2 * c, pegSide + 2 * c), pegInsert + 0.2).translate([
+            sx * jointX,
+            sy * jointY,
+            seatBotZ - 0.1,
+          ]);
+          seat = seat.subtract(sock);
+        }
+      // backrest slot — cut unconditionally whenever the seat exists (not
+      // gated on incBack), matching the mini-bed/mini-shelf convention so the
+      // joint-interference audit always compares identical seat geometry
+      seat = seat.subtract(
+        M.Manifold.extrude(rect(M, tenonW + 2 * c, t + 2 * c), t + 1).translate([0, backSlotY, seatBotZ - 0.5])
+      );
+      add(seat, seat);
+    }
+
+    // ===================== Legs: 4 independent tapered legs + square peg ====
+    if (bool(values, "incLegs")) {
+      for (const sx of [-1, 1])
+        for (const sy of [-1, 1]) {
+          const body = M.Manifold.cylinder(legH, 3.8, 3.0, 32);
+          const peg = M.Manifold.extrude(rect(M, pegSide, pegSide), pegInsert).translate([0, 0, legH]);
+          const leg = M.Manifold.union(body, peg).translate([sx * jointX, sy * jointY, 0]);
+          add(leg, leg);
+        }
+    }
+
+    // ===================== Backrest =====================
+    if (bool(values, "incBack")) {
+      const bodyR = Math.min(backH * 0.4, seatW * 0.42);
+      let cs = rrect(M, seatW * 0.94, backH, bodyR, 0, backH / 2);
+      cs = M.CrossSection.union([cs, rect(M, tenonW, tenonH, 0, -tenonH / 2)]);
+      const holeSp = seatW * 0.94 * 0.26;
+      for (const hx of [-holeSp, 0, holeSp]) {
+        cs = cs.subtract(M.CrossSection.circle(cutoutR, 28).translate(hx, backH * 0.68));
+      }
+      const flat = M.Manifold.extrude(cs, t);
+      // same rotate-then-translate formula as the bed's headboard/footboard:
+      // the post-rotation thickness band is always [-t,0], so translateY is
+      // always slotY + t/2 regardless of which edge it's for
+      const asm = flat.rotate([90, 0, 0]).translate([0, backSlotY + t / 2, seatTopZ]);
+      add(asm, flat);
+    }
+
+    if (asmParts.length === 0) throw new Error("至少要勾選一個分件");
+
+    if (assembled) {
+      const all = asmParts.length === 1 ? asmParts[0] : M.Manifold.union(asmParts);
+      const b = all.boundingBox();
+      return all.translate([-b.min[0], -b.min[1], -b.min[2]]);
+    }
+    return layoutParts(M, printParts, gap);
+  },
+};
+
+/* =====================================================================
  * 迷你收納櫃 Mini Doll Shelf — 開放式層架(無門片,結構最穩妥):
  * 底板 + 左右側板 + 頂板 + 背板,榫接組裝。
  * =================================================================== */

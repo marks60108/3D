@@ -220,6 +220,38 @@ console.log("--- mini-shelf assemblability (joint interference) ---");
   console.log(`[${engOk ? "OK" : "FAIL"}] side tenon engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
 }
 
+console.log("--- mini-chair assemblability (joint interference) ---");
+{
+  const chair = templates.find((x) => x.id === "mini-chair")!;
+  const base = defaultValues(chair.params);
+  const vol = (m: ReturnType<typeof chair.build>) => m.volume();
+  const only = (f: ParamValues, extra: ParamValues = {}) =>
+    chair.build({ ...base, incSeat: false, incLegs: false, incBack: false, ...f, ...extra, assembled: true }, wasm);
+  const pair = (label: string, a: ParamValues, b: ParamValues) => {
+    const ov = vol(only(a)) + vol(only(b)) - vol(only({ ...a, ...b }));
+    const ok = ov < 30;
+    if (!ok) failures++;
+    console.log(`[${ok ? "OK" : "FAIL"}] ${label}: overlap=${ov.toFixed(1)}mm³`);
+  };
+  pair("seat+legs", { incSeat: true }, { incLegs: true });
+  pair("seat+back", { incSeat: true }, { incBack: true });
+  const tight = { clearance: -0.5 };
+  const eng =
+    vol(only({ incSeat: true }, tight)) +
+    vol(only({ incLegs: true }, tight)) -
+    vol(only({ incSeat: true, incLegs: true }, tight));
+  const engOk = eng > 30;
+  if (!engOk) failures++;
+  console.log(`[${engOk ? "OK" : "FAIL"}] leg peg engagement @clr=-0.5: overlap=${eng.toFixed(1)}mm³ (must be >30)`);
+  const backTight =
+    vol(only({ incSeat: true }, tight)) +
+    vol(only({ incBack: true }, tight)) -
+    vol(only({ incSeat: true, incBack: true }, tight));
+  const backEngOk = backTight > 30;
+  if (!backEngOk) failures++;
+  console.log(`[${backEngOk ? "OK" : "FAIL"}] back tenon engagement @clr=-0.5: overlap=${backTight.toFixed(1)}mm³ (must be >30)`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} check(s) failed`);
   process.exit(1);
