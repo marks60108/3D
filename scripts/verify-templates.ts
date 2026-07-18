@@ -48,6 +48,8 @@ run("tube", { ...paramsFor("tube"), throughHole: false, innerDiameter: 15 });
 run("tube", { ...paramsFor("tube"), innerDiameter: 0 });
 run("hook", { ...paramsFor("hook"), twoHoles: false, tipAngle: 0 });
 run("hook", { ...paramsFor("hook"), tipAngle: 120 });
+run("usagi-mace", { ...paramsFor("usagi-mace"), splitPrint: true });
+run("usagi-mace", { ...paramsFor("usagi-mace"), springStyle: 0, coilTurns: 2 });
 run("fan-mount", { ...paramsFor("fan-mount"), leg1OffsetX: 20, leg1OffsetY: -15 });
 run("charm-peg-panel", { ...paramsFor("charm-peg-panel"), enableConnectors: false });
 run("device-tray", { ...paramsFor("device-tray"), liftHeight: 0 });

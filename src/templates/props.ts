@@ -133,7 +133,16 @@ function seamDowelJoint(
     return s;
   };
   const dowelLen = depth * 2 - 1.5; // slightly short so the seam still closes flush
-  const dowel = M.Manifold.cylinder(dowelLen, holeR - clearance, holeR - clearance, 24);
+  const dowelR = holeR - clearance;
+  // chamfered lead-in at both tips (a short cone taper) so the dowel
+  // self-aligns into the socket on insertion instead of needing a dead-on hit
+  const chamferH = Math.min(1.2, dowelLen * 0.2);
+  let dowel = M.Manifold.cylinder(dowelLen - 2 * chamferH, dowelR, dowelR, 24).translate([0, 0, chamferH]);
+  dowel = M.Manifold.union(dowel, M.Manifold.cylinder(chamferH, 0, dowelR, 24));
+  dowel = M.Manifold.union(
+    dowel,
+    M.Manifold.cylinder(chamferH, dowelR, 0, 24).translate([0, 0, dowelLen - chamferH])
+  );
   // mkSocket(false) reaches mostly into y<0 — that's a deep hole for BACK's own
   // territory, so it's assigned to backSocket (and mirrored for frontSocket)
   return { frontSocket: mkSocket(true), backSocket: mkSocket(false), dowel };
@@ -176,11 +185,12 @@ export const usagiMaceTemplate: Template = {
     { kind: "number", key: "handleLen", label: "握柄長度", min: 20, max: 100, step: 1, default: 46, unit: "mm" },
     { kind: "number", key: "handleDia", label: "握柄粗細", min: 4, max: 12, step: 0.5, default: 6, unit: "mm" },
     { kind: "number", key: "springLen", label: "彈簧段長度", min: 6, max: 34, step: 1, default: 15, unit: "mm" },
+    { kind: "number", key: "coilTurns", label: "彈簧圈數(僅②④樣式;調低=較疏鬆)", min: 2, max: 12, step: 1, default: 3, group: "選項" },
     { kind: "number", key: "eyeR", label: "眼睛大小", min: 0.8, max: 3, step: 0.1, default: 1.5, unit: "mm", group: "臉部微調" },
     { kind: "number", key: "eyeSpacing", label: "眼距(中心)", min: 3, max: 16, step: 0.5, default: 7, unit: "mm", group: "臉部微調" },
     { kind: "number", key: "mouthWidth", label: "嘴巴寬度", min: 5, max: 26, step: 0.5, default: 13, unit: "mm", group: "臉部微調" },
     { kind: "boolean", key: "splitPrint", label: "整支對半分印(完全免支撐,含2支定位榫釘)", default: false, group: "選項" },
-    { kind: "number", key: "seamClearance", label: "榫釘餘裕(單邊)", min: 0.05, max: 0.4, step: 0.05, default: 0.15, unit: "mm", group: "選項" },
+    { kind: "number", key: "seamClearance", label: "榫釘餘裕(單邊,較鬆好裝)", min: 0.05, max: 0.4, step: 0.05, default: 0.3, unit: "mm", group: "選項" },
     { kind: "boolean", key: "keychainLoop", label: "頂端鑰匙圈吊孔", default: false, group: "選項" },
   ],
   build: (values: ParamValues, M) => {
@@ -191,6 +201,7 @@ export const usagiMaceTemplate: Template = {
     const handleLen = num(values, "handleLen");
     const r = num(values, "handleDia") / 2;
     const springLen = num(values, "springLen");
+    const coilTurns = num(values, "coilTurns");
     const eyeR = num(values, "eyeR");
     const eyeSp = num(values, "eyeSpacing");
     const mouthW = num(values, "mouthWidth");
@@ -218,9 +229,12 @@ export const usagiMaceTemplate: Template = {
       if (style === 3) {
         m = M.Manifold.union(m, ribbedSpindle(M, r * 0.85, rc, handleTopZ, headBottomZ));
       } else {
+        // turn count is now an explicit param instead of derived from
+        // springLen — a fixed low default (3) keeps the coil visibly open/
+        // loose regardless of spring length, rather than auto-densifying as
+        // the spring gets longer
         const wire = style === 2 ? 1.4 : 1.9;
-        const turns = style === 2 ? Math.max(4, springLen / 2.4) : Math.max(3, springLen / 3.4);
-        m = M.Manifold.union(m, coil(M, rc, wire, turns, handleTopZ, headBottomZ));
+        m = M.Manifold.union(m, coil(M, rc, wire, coilTurns, handleTopZ, headBottomZ));
       }
       m = M.Manifold.union(m, M.Manifold.cylinder(2.4, rc + 1, rc + 1, 40).translate([0, 0, headBottomZ - 1.4]));
     }
